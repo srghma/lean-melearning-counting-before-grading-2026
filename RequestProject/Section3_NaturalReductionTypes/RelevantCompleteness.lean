@@ -33,7 +33,16 @@ namespace NRT
 
 open Classical
 
-variable {R : Type} [Semiring R]
+variable {R : Type}
+
+/-! ## Erasure of contexts -/
+
+theorem erase_consR {n : ℕ} (σ : Ty R) (Γ : Fin n → Ty R) :
+    (fun x => ((Fin.cons σ Γ : Fin (n + 1) → Ty R) x).erase) =
+      Fin.cons σ.erase (fun x => (Γ x).erase) := by
+  funext x; cases x using Fin.cases <;> simp
+
+variable [Semiring R]
 
 /-! ## Positivity over an arbitrary semiring -/
 
@@ -56,12 +65,6 @@ theorem GTm.positiveR_iff_positive {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n 
   | var x => simp [GTm.PositiveR, GTm.Positive]
   | lam d ih => simp [GTm.PositiveR, GTm.Positive, ih]
   | app d e ihd ihe => simp [GTm.PositiveR, GTm.Positive, ihd, ihe]
-
-omit [Semiring R] in
-theorem erase_consR {n : ℕ} (σ : Ty R) (Γ : Fin n → Ty R) :
-    (fun x => ((Fin.cons σ Γ : Fin (n + 1) → Ty R) x).erase) =
-      Fin.cons σ.erase (fun x => (Γ x).erase) := by
-  funext x; cases x using Fin.cases <;> simp
 
 /-- **Curry–Howard, soundness, for general grades.**  If sums vanish only when their
 summands do and there are no zero divisors, a positively graded typed term gives a proof

@@ -1,3 +1,18 @@
+# Summary of changes for run 0be5d7dd-5716-4fd6-9b34-3d7af0fc4623
+I removed all three `omit ... in` uses from the project. Instead of declaring every type-class assumption up front and then omitting some, each file now adds an assumption only at the point where the following declarations start to need it. The whole project builds with no errors, no warnings and no `sorry`. No statement or proof changed, only where declarations sit in their files.
+
+**`RequestProject/Section4_UnifiedFramework/ResourceLogic.lean`**
+- This file used to start with `variable {R : Type} [Add R] [Mul R] [Zero R] [One R]` and needed two `omit` lines. The assumptions now come in steps:
+  - `variable {R : Type}`, then `[Add R] [Mul R]`, covering `scaleZone`, `Coerces` and `forall₂_scaleZone`.
+  - `[Zero R]`, covering `rep` and `localCondition_of_rep`.
+  - `[One R]`, covering the four-zone calculus `Deriv`, the coercion lemmas and `scale_admissible`.
+- To make this possible, the annotation arithmetic now sits in its own section ("Annotation arithmetic: scaling, coercion, repeated sums"), placed before the sequent calculus. The old heading above `Permeability` became "Permeability operators".
+
+**`RequestProject/Section3_NaturalReductionTypes/RelevantCompleteness.lean`**
+- `variable {R : Type}` now comes first. `erase_consR` doesn't use any algebra on the grades, so it moved under a new "Erasure of contexts" heading before `variable [Semiring R]`.
+
+The Properties table didn't need changes, because none of its entries contained `omit`. The work is committed.
+
 # Summary of changes for run 9887be3a-902b-4a9e-adbc-be684613cb18
 I continued the formalization with three new files. The project builds with no `sorry`, and the new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
 

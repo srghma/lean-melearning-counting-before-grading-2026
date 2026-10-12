@@ -60,7 +60,7 @@ def ATm.erase {R : Type} : {n : ℕ} → ATm R n → NRT.Tm n
   | _, .lam _ e => .lam e.erase
   | _, .app _ e₁ e₂ => .app e₁.erase e₂.erase
 
-/-! ## The four-zone sequent calculus -/
+/-! ## Permeability operators -/
 
 /-- Permeability operators of an instance, as relations (they may be partial). -/
 structure Permeability (R : Type) where
@@ -73,11 +73,40 @@ structure Permeability (R : Type) where
   /-- `P_R^→`: inner right entry becomes outer right formula. -/
   pRr : Fm R × R → Fm R → Prop
 
-variable {R : Type} [Add R] [Mul R] [Zero R] [One R]
+variable {R : Type}
+
+/-! ## Annotation arithmetic: scaling, coercion, repeated sums -/
+
+variable [Add R] [Mul R]
 
 /-- Scale every annotation of a zone by `k` (the `k Γ` of rule `(·k)`). -/
 def scaleZone (k : R) (Γ : List (Fm R × R)) : List (Fm R × R) :=
   Γ.map fun e => (e.1, k * e.2)
+
+/-- `e'` is obtained from `e` by an additive coercion: same formula, grade `i + c`. -/
+def Coerces (e e' : Fm R × R) : Prop := e'.1 = e.1 ∧ ∃ c, e'.2 = e.2 + c
+
+theorem forall₂_scaleZone {k : R} (hk : ∀ i : R, ∃ c, k * i = i + c) :
+    ∀ Γ : List (Fm R × R), List.Forall₂ Coerces Γ (scaleZone k Γ)
+  | [] => .nil
+  | e :: Γ => .cons ⟨rfl, hk e.2⟩ (forall₂_scaleZone hk Γ)
+
+variable [Zero R]
+
+/-- `rep n i = i + (i + ⋯ + (i + 0))`, the sum of `n` copies of `i`. -/
+def rep (i : R) : ℕ → R
+  | 0 => 0
+  | n + 1 => i + rep i n
+
+/-- The paper's local condition `i + ⋯ + i (k copies, k ≥ 1) = k i` implies the
+condition used in `scale_admissible`. -/
+theorem localCondition_of_rep {k : R} {n : ℕ} (h : ∀ i : R, k * i = rep i (n + 1)) :
+    ∀ i : R, ∃ c, k * i = i + c :=
+  fun i => ⟨rep i n, h i⟩
+
+/-! ## The four-zone sequent calculus -/
+
+variable [One R]
 
 /-- Derivability `Ψ; Γ ⊢ Δ; Θ` in the 1995 logic for annotation algebra `R` and
 permeability operators `P`.  The flag `sc` says whether the scaling rule `(·k)` is
@@ -137,9 +166,6 @@ inductive Deriv (P : Permeability R) (sc : Bool) :
 
 /-! ## Additive coercion and the derived scaling rule -/
 
-/-- `e'` is obtained from `e` by an additive coercion: same formula, grade `i + c`. -/
-def Coerces (e e' : Fm R × R) : Prop := e'.1 = e.1 ∧ ∃ c, e'.2 = e.2 + c
-
 variable {P : Permeability R} {sc : Bool}
 
 theorem coerce_one_L {Γ₁ Γ₂ Δ : List (Fm R × R)} {A : Fm R} {i : R} (c : R)
@@ -192,12 +218,6 @@ theorem coerce {Γ Γ' Δ Δ' : List (Fm R × R)} (h : Deriv P sc [] Γ Δ [])
     Deriv P sc [] Γ' Δ' [] :=
   coerce_R [] hΔ (coerce_L [] hΓ h)
 
-omit [Zero R] [One R] in
-theorem forall₂_scaleZone {k : R} (hk : ∀ i : R, ∃ c, k * i = i + c) :
-    ∀ Γ : List (Fm R × R), List.Forall₂ Coerces Γ (scaleZone k Γ)
-  | [] => .nil
-  | e :: Γ => .cons ⟨rfl, hk e.2⟩ (forall₂_scaleZone hk Γ)
-
 /-- **Scaling is recovered from additive coercion.** Under the local condition
 `∀ i, ∃ c, k · i = i + c`, the rule `(·k)` is admissible in the system *without* the
 scaling rule: from a scaling-free derivation of `·; Γ ⊢ Δ; ·` we get a scaling-free
@@ -206,18 +226,6 @@ theorem scale_admissible {k : R} (hk : ∀ i : R, ∃ c, k * i = i + c)
     {Γ Δ : List (Fm R × R)} (h : Deriv P false [] Γ Δ []) :
     Deriv P false [] (scaleZone k Γ) (scaleZone k Δ) [] :=
   coerce h (forall₂_scaleZone hk Γ) (forall₂_scaleZone hk Δ)
-
-/-- `rep n i = i + (i + ⋯ + (i + 0))`, the sum of `n` copies of `i`. -/
-def rep (i : R) : ℕ → R
-  | 0 => 0
-  | n + 1 => i + rep i n
-
-omit [One R] in
-/-- The paper's local condition `i + ⋯ + i (k copies, k ≥ 1) = k i` implies the
-condition used in `scale_admissible`. -/
-theorem localCondition_of_rep {k : R} {n : ℕ} (h : ∀ i : R, k * i = rep i (n + 1)) :
-    ∀ i : R, ∃ c, k * i = i + c :=
-  fun i => ⟨rep i n, h i⟩
 
 end RML
 
