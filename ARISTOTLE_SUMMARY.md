@@ -1,3 +1,33 @@
+# Summary of changes for run 3b4ff10d-689a-4c1d-a8b5-f23d69419828
+I added a new Lean file, `RequestProject/Section3_NaturalReductionTypes/Intrinsic.lean`, in which typing and grading, not just scoping, are correct by construction. The whole project builds with no `sorry`, and the new results use only the standard axioms.
+
+The well-scoped terms were already in place before this session (`Tm : ℕ → Type` with `var : Fin n → Tm n`, so `Tm 0` is the closed terms). The context and grades of `Has`, the relevant-logic derivations and the Section 4 annotated terms were all indexed by `Fin n` in the same way. I left all of that unchanged and built on it.
+
+**Typed terms that carry their own grades**
+```lean
+inductive GTm : {n : ℕ} → (Fin n → Ty R) → (Fin n → R) → Ty R → Type
+  | var (x : Fin n) : GTm Γ (single x) (Γ x)
+  | lam : GTm (Fin.cons σ Γ) V τ → GTm Γ (fun x => V x.succ) (.arr (V 0) σ τ)
+  | app : GTm Γ V₁ (.arr b σ τ) → GTm Γ V₂ σ → GTm Γ (fun x => V₁ x + b * V₂ x) τ
+```
+An element of `GTm Γ V τ` is a term with free variables in `Fin n`, type `τ` and neededness function `V`. A term with the wrong scope, type or grades can't be written, and `GTm ![] 0 τ` is the type of closed terms of type `τ`.
+- **Same as the existing judgement (`GTm.has_iff`):** `Has Γ V t τ` holds exactly when `t` is the erasure of some `d : GTm Γ V τ`.
+- **Results carried over:**
+  - `GTm.subject_reduction`: a β-reduct of a typed term is again a typed term with the same scope, type and grades.
+  - `GTm.sn`: every typed term is strongly normalising.
+  - `GTm.closed_normalizes`: a closed typed term reduces to a β-normal closed term of the same type.
+- **Worked examples as closed typed terms:** `gK : GTm ![] 0 (σ →₁ τ →₀ σ)`, `gTwice` and `gCompose`. Each is proved to erase to the existing `K`, `twice` and `compose`.
+
+**Proofs in relevant logic**
+`RPf Γ U A` is the type of proof terms with hypotheses `Γ : Fin n → Fm` that use exactly the hypotheses in `U`. `RPf.nonempty_iff` shows that `Rel Γ U A` holds exactly when such a proof term exists, and each proof erases to a `Tm n`.
+
+**Limitations:**
+- The erasure functions are marked `noncomputable`. Lean's pattern matching doesn't accept these index shapes, so I defined erasure with the recursors; the typed terms themselves are ordinary data.
+- `λx. K x x` has no typed version yet. Building it would need renaming for typed terms, which I haven't written.
+- Type and formula atoms are still `ℕ`-named, and the Section 4 sequent zones are still lists, because neither involves bound variables.
+
+`FORMALIZATION.md` has a new section describing the file. The Properties table now includes `NRT.GTm` and the two equivalences, `GTm.has_iff` and `RPf.nonempty_iff`, both marked proved.
+
 # Summary of changes for run fe1b6fb9-ab90-4f80-8a3d-9aaa90f69c33
 I changed the syntax so scoping is correct by construction. All the earlier results still hold in the new form. The whole project builds with no `sorry`, and the main theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
 

@@ -15,7 +15,7 @@ The Lean files are grouped into directories named after the sections of the pape
 
 | Directory | Paper section | Files |
 | --- | --- | --- |
-| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `NaturalReductionTypes.lean`, `RelevantLogic.lean` |
+| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `NaturalReductionTypes.lean`, `RelevantLogic.lean`, `Intrinsic.lean` |
 | `RequestProject/Section4_UnifiedFramework/` | 4. The unified framework (1995) | `ResourceLogic.lean` |
 | `RequestProject/Section5_Instances/` | 5. Three instances (1995) | `Instances.lean` |
 | `RequestProject/Section6_Dictionary/` | 6. A dictionary (generic normalisation) | `Normalization.lean` |
@@ -150,3 +150,24 @@ variables.
 * Completeness of the 1993 system with respect to head neededness.
 * The converse (completeness) direction of the Curry–Howard correspondence with relevant logic.
 * Non-interference for the trust instance, which the note itself says is absent.
+
+
+## `RequestProject/Section3_NaturalReductionTypes/Intrinsic.lean` — intrinsically typed terms
+
+This file goes one step beyond well-scoped syntax: scoping, typing and grading are all
+correct by construction.
+
+| Lean | Meaning |
+|---|---|
+| `NRT.GTm Γ V τ` (for `Γ : Fin n → Ty R`, `V : Fin n → R`) | terms with free variables in `Fin n`, of type `τ`, with neededness function `V`; closed terms of type `τ` are `GTm ![] 0 τ` |
+| `NRT.GTm.erase` | the underlying `Tm n` |
+| `NRT.GTm.has_iff` | `Has Γ V t τ ↔ ∃ d : GTm Γ V τ, d.erase = t` |
+| `NRT.GTm.subject_reduction` | a β-reduct of `d.erase` is the erasure of some `d' : GTm Γ V τ` |
+| `NRT.GTm.sn`, `NRT.GTm.closed_normalizes` | every intrinsic term is strongly normalising; a closed one reduces to a normal closed intrinsic term of the same type |
+| `NRT.gK`, `NRT.gTwice`, `NRT.gCompose` | the worked examples as closed intrinsic terms; their erasures are `K`, `twice`, `compose` |
+| `NRT.RPf Γ U A` | intrinsically scoped proof terms of relevant implication, using exactly the hypotheses in `U`; `RPf.nonempty_iff : Rel Γ U A ↔ Nonempty (RPf Γ U A)` |
+
+The erasure maps are defined with the recursors (the indices of these families are not
+patterns), so they are marked `noncomputable`; the intrinsic terms themselves are ordinary
+data.  `λx. K x x` is not given intrinsically, because it would need intrinsic renaming
+to embed `K` under a binder.
