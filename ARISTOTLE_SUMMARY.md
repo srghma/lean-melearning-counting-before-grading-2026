@@ -1,3 +1,28 @@
+# Summary of changes for run fe1b6fb9-ab90-4f80-8a3d-9aaa90f69c33
+I changed the syntax so scoping is correct by construction. All the earlier results still hold in the new form. The whole project builds with no `sorry`, and the main theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+**Terms (new file `RequestProject/Section3_NaturalReductionTypes/Syntax.lean`)**
+```lean
+inductive Tm : ℕ → Type
+  | var {n : ℕ} : Fin n → Tm n
+  | lam {n : ℕ} : Tm (n + 1) → Tm n
+  | app {n : ℕ} : Tm n → Tm n → Tm n
+```
+`Tm n` holds exactly the terms whose free variables are among `0 … n-1`, so `Tm 0` is the type of closed terms and an out-of-range index can't be written. The same file has renaming (`Fin n → Fin m`), parallel substitution (`Fin n → Tm m`), the single substitution `t[u]` used by β (`inst`), β-reduction `Step`, and the rules for combining these.
+
+**The other datatypes follow the same pattern**
+- **Typing judgement (`NRT.Has`):** for `t : Tm n`, the context is `Fin n → Ty R` and the neededness function is `Fin n → R`, so both cover exactly the variables in scope. A closed typing is written `Has ![] 0 t τ`.
+- **Graded lemmas (rewritten):** substitution `Has.subst` now substitutes for all variables at once, and the new usage is \(y \mapsto \sum_x V(x)\,W(x)(y)\). Renaming `Has.rename` covers weakening, exchange and contraction.
+- **Closed terms in larger scopes (new):** `Has.embed` lets a closed term be used in any scope without using any of its variables.
+- **Positively graded fragment and relevant logic:** `PHas` and the relevant-logic derivations `Rel` are indexed by `Fin n`. `RTheorem A` now means "derivable from the empty set of hypotheses".
+- **Annotated terms (Section 4):** these are now `RML.ATm R n`, and erasure maps them to `NRT.Tm n`.
+- **Worked examples:** `K`, `λx. K x x`, `Twice`, `Compose` and `W` are now closed terms of type `Tm 0`, typed in the empty context. `K_not_positive` is now stated as `¬ PHas ![] 0 K …`.
+- **Normalisation:** with scoped terms, reducibility at arrow type is now defined over all renamings into larger scopes. The proof needed two new facts: β-reduction commutes with renaming in both directions (`Step.rename`, `Step.of_rename`). There is a new corollary, `closed_normalizes`: every typeable closed term has a β-normal form of the same type.
+
+**Unchanged:** the four-zone sequents of Section 4 were already lists of formulas, and type and formula atoms are names rather than bound variables, so they keep `ℕ`.
+
+`FORMALIZATION.md` describes the new scoped design. In the Properties table, the changed statements have been updated (statuses unchanged) and `NRT.Tm` has been added.
+
 # Summary of changes for run 6bb44566-c02f-447a-a28c-36acdbcb10db
 I moved the Lean files into directories named after the sections of the paper:
 

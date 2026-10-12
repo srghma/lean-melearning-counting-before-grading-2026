@@ -45,17 +45,20 @@ inductive Fm (R : Type) : Type
   | atom : ℕ → Fm R
   | arr : R → Fm R → Fm R → Fm R
 
-/-- Annotated λ-terms `E ::= x^k | λ^k x. E | E₁ @^k E₂` (Section 4.3), de Bruijn style. -/
-inductive ATm (R : Type) : Type
-  | var : ℕ → R → ATm R
-  | lam : R → ATm R → ATm R
-  | app : R → ATm R → ATm R → ATm R
+/-- Annotated λ-terms `E ::= x^k | λ^k x. E | E₁ @^k E₂` (Section 4.3), well scoped:
+`ATm R n` has its free variables in `Fin n` (de Bruijn indices), so `ATm R 0` is the type
+of closed annotated terms. -/
+inductive ATm (R : Type) : ℕ → Type
+  | var {n : ℕ} : Fin n → R → ATm R n
+  | lam {n : ℕ} : R → ATm R (n + 1) → ATm R n
+  | app {n : ℕ} : R → ATm R n → ATm R n → ATm R n
 
-/-- The term semantics is that of the ordinary λ-calculus: erase the annotations. -/
-def ATm.erase {R : Type} : ATm R → NRT.Tm
-  | .var x _ => .var x
-  | .lam _ e => .lam e.erase
-  | .app _ e₁ e₂ => .app e₁.erase e₂.erase
+/-- The term semantics is that of the ordinary λ-calculus: erase the annotations.
+Erasure preserves the scope. -/
+def ATm.erase {R : Type} : {n : ℕ} → ATm R n → NRT.Tm n
+  | _, .var x _ => .var x
+  | _, .lam _ e => .lam e.erase
+  | _, .app _ e₁ e₂ => .app e₁.erase e₂.erase
 
 /-! ## The four-zone sequent calculus -/
 
@@ -229,7 +232,3 @@ theorem RML.rep_natCast {S : Type} [Semiring S] (n : ℕ) (i : S) :
 theorem RML.localCondition_natCast {S : Type} [Semiring S] (n : ℕ) :
     ∀ i : S, ∃ c, ((n + 1 : ℕ) : S) * i = i + c :=
   RML.localCondition_of_rep (n := n) (fun i => RML.rep_natCast (n + 1) i)
-
-namespace RML
-
-end RML

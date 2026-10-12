@@ -15,7 +15,7 @@ The Lean files are grouped into directories named after the sections of the pape
 
 | Directory | Paper section | Files |
 | --- | --- | --- |
-| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `NaturalReductionTypes.lean`, `RelevantLogic.lean` |
+| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `NaturalReductionTypes.lean`, `RelevantLogic.lean` |
 | `RequestProject/Section4_UnifiedFramework/` | 4. The unified framework (1995) | `ResourceLogic.lean` |
 | `RequestProject/Section5_Instances/` | 5. Three instances (1995) | `Instances.lean` |
 | `RequestProject/Section6_Dictionary/` | 6. A dictionary (generic normalisation) | `Normalization.lean` |
@@ -31,13 +31,30 @@ Sections 1, 2, 7 and 8 contain no formalizable claims, so they have no directory
 | App rule, `V(x) = V₁(x) + b × V₂(x)` | constructor `NRT.Has.app` |
 
 The type system is generic over any semiring `R` of grades; the 1993 system is `R = ℕ`.
-Terms are untyped λ-terms with de Bruijn indices, and a context gives a type to every
-variable.
+
+**Well-scoped syntax (correct by construction).** `Syntax.lean` defines terms as an
+indexed family `NRT.Tm : ℕ → Type` with `var : Fin n → Tm n`, `lam : Tm (n+1) → Tm n`
+and `app : Tm n → Tm n → Tm n`. So `Tm n` contains exactly the terms whose free variables
+are among `0, …, n-1`, and `Tm 0` is the type of closed terms. A dangling de Bruijn index
+cannot be written. Renaming (`Fin n → Fin m`), parallel substitution (`Fin n → Tm m`), the
+single substitution `t[u]` used by β (`NRT.inst`) and their fusion laws are in the same
+file.
+
+The other datatypes follow the same pattern. A typing judgement for `t : Tm n` uses a context
+`Γ : Fin n → Ty R` and a neededness function `V : Fin n → R`, so both give a type and a grade
+to exactly the variables in scope. Closed typings are `NRT.Has ![] 0 t τ`. The relevant-logic
+derivations `NRT.Rel` use `Fin n` hypotheses, and the annotated terms of Section 4 are
+`RML.ATm R n`, which erase to `NRT.Tm n`. The worked examples (`K`, `λx. K x x`, `Twice`,
+`Compose`, `W`) are all closed terms of type `Tm 0`, typed in the empty context.
+`NRT.Has.embed` lets a closed term be used in any scope with no usage of the scope's
+variables.
 
 * `NRT.subject_reduction`, `NRT.subject_reduction_star`: β-reduction anywhere in a term
   preserves the type **and the exact neededness function**. This is proved once for an
   arbitrary semiring; neither commutativity nor idempotence is needed. It rests on the
-  graded substitution lemma `NRT.has_subst`, whose usage is `Γ + r·Δ`.
+  graded parallel substitution lemma `NRT.Has.subst`: substituting `s x`, used according
+  to `W x`, for every variable `x` gives usage `y ↦ Σₓ V(x)·W(x)(y)`. The graded renaming
+  lemma `NRT.Has.rename` (covering weakening, exchange and contraction) is proved first.
 * `NRT.head_needed_sound` (grades in `ℕ`): suppose a typing gives a free variable `x`
   grade `0`. Then no β-reduct of the term is a head normal form whose head variable is
   `x`. This is soundness of grade `0` with respect to head neededness. The 1993 paper
@@ -113,14 +130,18 @@ variable.
 
 ## `RequestProject/Section6_Dictionary/Normalization.lean` — Section 6 (dictionary), normalisation ("Curry–Howard–Tait")
 
-* De Bruijn infrastructure: renaming, parallel substitution and their fusion laws. These
-  are connected to the substitution `NRT.subst` used by β-reduction, and
-  `NRT.step_psub` shows β-reduction is stable under substitution.
+* Renaming and substitution come from `Syntax.lean`. `NRT.Step.rename`, `NRT.Step.subst`
+  and `NRT.Step.of_rename` show that β-reduction commutes with renaming in both directions.
+  Since terms are well scoped, reducibility is defined Kripke-style: a term of arrow type
+  is reducible if every renaming of it into a larger scope, applied to a reducible
+  argument, is reducible.
 * `NRT.strong_normalization`: for any grade semiring, every term typeable in natural
   reduction types is strongly normalising for full β-reduction. It is proved with Tait's
   reducibility method (`NRT.Red`, `NRT.cr`, `NRT.red_fundamental`).
 * `NRT.normal_form_head` (grades in `ℕ`): a typeable term reduces to a β-normal form with
   the same type and neededness function, and no grade-`0` variable is at its head.
+* `NRT.closed_normalizes`: every closed typeable term (`Tm 0`, empty context) reduces to a
+  β-normal form of the same type.
 
 ## Not formalized
 
