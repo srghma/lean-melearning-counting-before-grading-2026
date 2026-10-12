@@ -1,3 +1,73 @@
+# Summary of changes for run 9887be3a-902b-4a9e-adbc-be684613cb18
+I continued the formalization with three new files. The project builds with no `sorry`, and the new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+**`RequestProject/Section3_NaturalReductionTypes/RelevantCompleteness.lean`: the link to relevant logic, in both directions.** The paper says the 1993 system comes "with Curry–Howard to the implicational fragment of relevant logic" but doesn't say which grades it means. Earlier work only had the direction from typed terms to proofs, over \(\mathbb N\).
+- **Typed terms to proofs, for more grade algebras (`GTm.toRPfR`):** this now works for any grades where \(1 \neq 0\), there are no zero divisors, and a sum is zero only when its parts are. Every arrow must have a nonzero grade. Over \(\mathbb N\) this matches the earlier notion of positive grading (`positiveR_iff_positive`).
+- **Proofs to typed terms, when \(1+1=1\) (`RPf.toGTm`):** every relevant-logic proof becomes a typed term with all arrows graded 1. It has the same underlying λ-term, and the variables with nonzero grade are exactly the hypotheses the proof uses.
+- **Full equivalence (`rel_iff_positive`):** for such grades, being derivable in relevant logic is exactly the same as having a typing where every arrow has a nonzero grade.
+- **The converse fails over \(\mathbb N\) (`not_positive_relW2`):** take the relevant-logic proof \(\lambda h\,a\,k.\ k\,(h\,(\lambda x.x))\,(h\,(\lambda x.\,a\,x\,x))\). No closed \(\mathbb N\)-graded typed term with all grades at least 1 has this λ-term, whatever its type. The variable \(h\) has a single graded type, but its first argument \(\lambda x.x\) forces grade exactly 1 and its second argument \(\lambda x.\,a\,x\,x\) forces grade at least 2. This failure is about this particular proof. Whether the formula itself has some other proof with such an \(\mathbb N\)-typing is still open.
+
+**`RequestProject/Section3_NaturalReductionTypes/HeadNeededGeneral.lean`:** `GTm.head_needed_sound_gen` extends the head-neededness soundness result beyond \(\mathbb N\). In any grade algebra where \(1 \neq 0\) and a sum is zero only if its first part is, a grade-0 variable is never the head variable of any reduct.
+
+**`RequestProject/Section5_Instances/QualitativeRelevance.lean`:** this applies the results above to the Section 5 algebras.
+- `trust_rel_iff_positive` and `bt_rel_iff_positive`: the full equivalence holds for the trust and binding-time algebras.
+- `relW2_trust` and `relW2_not_nat`: the same λ-term has a trust grading with no zero grades, but no such \(\mathbb N\)-grading. This is a concrete case of the "idempotence dial": counting tells apart proofs that relevance treats as the same.
+- `trust_untrusted_not_head` and `bt_dynamic_not_head`: an untrusted (or dynamic) variable never becomes the head variable of any reduct. This only covers head position. It is not a full non-interference theorem, which the paper itself says is missing.
+
+`FORMALIZATION.md` describes the new files and updates the "Not formalized" list. The Properties table has three new entries, all marked proved.
+
+**Still not formalized:**
+- Cut elimination for the 1995/1996 logic.
+- Completeness of the 1993 system with respect to head neededness.
+- Full non-interference for the trust instance.
+
+# Summary of changes for run 00fd3079-d8b7-46d8-8f25-397e3c1d2ec5
+I didn't change any files. Here is the answer.
+
+**Why "this term has these several gradings" couldn't be written directly without `Tm`**
+
+In the typed grammar, the type and the grades are part of the term itself. A value `d : GTm Γ V τ` is a term together with one fixed type \(\tau\) and one fixed grading \(V\). Two different gradings of `K`, say \(\sigma \to_1 \tau \to_0 \sigma\) and another one, are therefore two separate elements living in two different Lean types, such as `GTm ![] 0 τ₁` and `GTm ![] 0 τ₂`. Nothing in the typed grammar says they are "the same `K`", so there is no single object that "has" both gradings.
+
+The paper's statement is about one plain λ-term \(M\) that gets several judgements \(A \vdash_V M : \tau\). To write that, you need \(M\) as an object of its own, apart from any grading. That object is the untyped `Tm`. It lets us state `Has Γ V₁ t τ₁ ∧ Has Γ V₂ t τ₂` for the same `t`, or equivalently "`d₁.erase = d₂.erase`". Without `Tm`, you would need some ad-hoc relation saying two typed terms "have the same shape", which amounts to defining `Tm` again in a roundabout way.
+
+**What `RPf` and `ATm` are**
+
+- **`RPf`** (in `Section3_NaturalReductionTypes/RelevantLogic.lean`) is the grammar of proof terms for the implicational fragment of relevant logic. This is the logic the paper's Section 3 links to by Curry–Howard. `RPf Γ U A` is a proof of formula \(A\) from hypotheses `Γ` that uses exactly the hypotheses in the set `U`. Its three constructors are:
+  - `hyp`: use one hypothesis;
+  - `impI`: implication introduction, which may only discharge a hypothesis that was actually used;
+  - `impE`: implication elimination, which takes the union of the used sets.
+- **`ATm`** (in `Section4_UnifiedFramework/ResourceLogic.lean`) is the Section 4 annotated term grammar \(E ::= x^k \mid \lambda^k x.E \mid E_1 @^k E_2\). Every variable, λ and application carries a resource annotation \(k\). The paper gives these terms "the term semantics of the ordinary λ-calculus (erase annotations)".
+
+**Why the "same term" results need `Tm`**
+
+`GTm`, `RPf` and `ATm` are three unrelated grammars. Each has its own erasure into `Tm`, and the "same term" results are stated as equalities of erasures. For example, `GTm.toRPf_erase` says that turning a positively graded typed term into a relevant-logic proof keeps the underlying λ-term.
+
+Without `Tm`, each pair of grammars would need its own translation, plus its own proof that the translation "keeps the term". That is more work. It also says less, because you only learn that one translation exists, not that both sides are literally the same λ-program.
+
+# Summary of changes for run d2a75697-3187-4484-90b3-e781dec16399
+I didn't change any files. Here is the answer.
+
+**Does the paper use untyped terms?** Yes. It types terms "Curry-style": types and grades are assigned to plain λ-terms, rather than built into the terms themselves.
+- **Section 3:** the judgement is \(A \vdash_V M : \tau\), where \(M\) is an ordinary λ-term and \(V\) records how much each variable is needed. The same term can get several gradings: `K` has type \(\sigma \to_1 \tau \to_0 \sigma\) as one instance among others.
+- **Soundness and completeness are stated with respect to head neededness.** Head neededness is a property of how the plain term runs under β-reduction, so you need a notion of "the program" that exists apart from its typing.
+- **The \(\lambda x.\,K\,x\,x\) example** compares how often \(x\) *occurs* in the term (twice) with how often it is *used* (once). That only makes sense if the term exists separately from its derivation.
+- **Section 4:** the annotated terms \(E ::= x^k \mid \lambda^k x.E \mid E_1 @^k E_2\) are given "the term semantics of the ordinary λ-calculus (erase annotations)". Erasure to untyped terms is part of the definition.
+- **Curry–Howard to relevant logic** says that a typing derivation and a relevant-logic proof correspond to the *same* λ-term.
+
+**How the formalization uses untyped `Tm`:** it is the one grammar that the three typed or annotated grammars all erase to: `GTm` (Section 3 typed terms), `RPf` (relevant-logic proof terms) and `ATm` (Section 4 annotated terms). It is used for:
+- the plain-term β-reduction behind head neededness;
+- the "same underlying term" results (`GTm.toRPf_erase`, `ATm.erase`, the erasures of `K`, `twice`, `compose` and `kxx`);
+- `Has`, which is defined as "`t` is the erasure of some typed term" and exists to state the paper's judgement form.
+
+The strong-normalization proof in `Normalization.lean` also uses it internally.
+
+**Could we use only the typed grammar?** Technically yes, but I wouldn't. Typed reduction (`GStep`), typed substitution and the head-neededness result on typed terms already exist, and the normalization proof could be redone on typed terms. Dropping `Tm` would cost:
+1. Faithfulness: the paper's judgement form \(A \vdash_V M : \tau\) and statements of the form "this term has these several gradings" could no longer be written directly.
+2. The comparison between grammars: every "same term" result would have to become a direct translation between `GTm`, `RPf` and `ATm`, which is more work and says less.
+3. Head-neededness soundness would only be about typed reduction, not about how the plain program runs, which is what the paper's claim is about.
+
+`Tm` is small (it lives in `Syntax.lean`). Typed terms are already the main grammar everywhere, and `Tm` mostly serves as the shared target that erasure maps into. The sensible setup is the current one: typed terms as the main grammar, plus untyped `Tm` for erasure, β-reduction and cross-system statements.
+
 # Summary of changes for run c662a164-4bee-4735-8608-72f83bf4aaa8
 The typed, graded terms `GTm` are now the main grammar of the type system, and every result is stated in terms of them. `Intrinsic.lean` has been merged into the main files and deleted. The whole project builds with no `sorry` and no warnings. The key theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
 

@@ -15,9 +15,9 @@ The Lean files are grouped into directories named after the sections of the pape
 
 | Directory | Paper section | Files |
 | --- | --- | --- |
-| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `NaturalReductionTypes.lean`, `RelevantLogic.lean` |
+| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `NaturalReductionTypes.lean`, `RelevantLogic.lean`, `RelevantCompleteness.lean`, `HeadNeededGeneral.lean` |
 | `RequestProject/Section4_UnifiedFramework/` | 4. The unified framework (1995) | `ResourceLogic.lean` |
-| `RequestProject/Section5_Instances/` | 5. Three instances (1995) | `Instances.lean` |
+| `RequestProject/Section5_Instances/` | 5. Three instances (1995) | `Instances.lean`, `QualitativeRelevance.lean` |
 | `RequestProject/Section6_Dictionary/` | 6. A dictionary (generic normalisation) | `Normalization.lean` |
 
 Sections 1, 2, 7 and 8 contain no formalizable claims, so they have no directory.
@@ -170,10 +170,48 @@ derived from the corresponding operations on `GTm`.
 * `NRT.closed_normalizes`: every closed typed term `d : GTm ![] 0 τ` reduces to a closed
   typed term of the same type whose erasure is β-normal.
 
+## `RequestProject/Section3_NaturalReductionTypes/RelevantCompleteness.lean` — Curry–Howard, both directions
+
+The note says the 1993 discipline comes "with Curry–Howard to the implicational fragment of
+relevant logic" without fixing the algebra of grades. This file settles both directions.
+
+* `NRT.GTm.PositiveR`: positivity (every arrow introduced or eliminated has a nonzero grade)
+  over any semiring; over `ℕ` it agrees with `NRT.GTm.Positive` (`NRT.GTm.positiveR_iff_positive`).
+* `NRT.GTm.toRPfR` (soundness, general grades): in a nontrivial semiring with no zero
+  divisors where `a + b = 0` implies `a = 0`, a positively graded typed term erases to a
+  relevant-logic proof term with the same λ-term, labelled by the support of `V`.
+* `NRT.RPf.toGTm` (completeness, idempotent grades): if `1 + 1 = 1`, every relevant-logic
+  proof term is a typed term with the same λ-term (`NRT.RPf.toGTm_erase`), all arrows graded
+  `1`, neededness function the indicator of the label, positively graded
+  (`NRT.RPf.toGTm_positive`).
+* `NRT.rel_iff_positive`: for such grades, relevant derivability **is** positive graded typability.
+* `NRT.not_positive_relW2` (**the converse fails over `ℕ`**): the proof term
+  `λh a k. k (h (λx. x)) (h (λx. a x x))` of `((A→A)→B) → (A→A→A) → (B→B→C) → C`
+  (`NRT.relW2`, `NRT.rtheorem_relW2Fm`) is not the erasure of any positively `ℕ`-graded closed
+  typed term: `h` would need an argument of grade exactly `1` and one of grade `≥ 2`.
+  Inversion lemmas `NRT.GTm.inv_var`, `inv_lam`, `inv_app` are used for this.
+
+## `RequestProject/Section3_NaturalReductionTypes/HeadNeededGeneral.lean` — head neededness for general grades
+
+* `NRT.GTm.head_needed_sound_gen`: the soundness of grade `0` for head neededness holds in any
+  nontrivial semiring where `a + b = 0` implies `a = 0` (not only `ℕ`).
+
+## `RequestProject/Section5_Instances/QualitativeRelevance.lean` — the idempotence dial meets Curry–Howard
+
+* `RML.trust_rel_iff_positive`, `RML.bt_rel_iff_positive`: over the trust and binding-time
+  algebras, relevant implication is exactly positive graded typing.
+* `RML.relW2_trust` vs `RML.relW2_not_nat`: the same λ-term is a positively trust-graded
+  closed typed term but has no positive `ℕ`-grading — counting is finer than relevance.
+* `RML.trust_untrusted_not_head`, `RML.bt_dynamic_not_head`: an untrusted (resp. dynamic)
+  variable never becomes the head variable of any reduct. This is only a head-position
+  statement, not a full non-interference theorem.
+
 ## Not formalized
 
 * Cut elimination for the 1995/1996 logic. The note only mentions it ("proved once,
   generically") and refers to the 1996 paper for it.
 * Completeness of the 1993 system with respect to head neededness.
-* The converse (completeness) direction of the Curry–Howard correspondence with relevant logic.
-* Non-interference for the trust instance, which the note itself says is absent.
+* The converse direction of the Curry–Howard correspondence over `ℕ` at the level of
+  formulas (it fails at the level of proof terms, see above; it holds for idempotent grades).
+* Full non-interference for the trust instance, which the note itself says is absent
+  (only the head-position statement above is proved).
