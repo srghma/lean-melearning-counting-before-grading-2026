@@ -77,10 +77,42 @@ variable.
   fails for `ℕ`, where `1 + 1 = 2`. `RML.nat_scale_admissible` instantiates admissible
   scaling for the usage instance `ℕ` with any `k ≥ 1`.
 
+## `RequestProject/RelevantLogic.lean` — Section 3, Curry–Howard to relevant logic
+
+* `NRT.Fm` are implicational formulas. `NRT.Rel Γ U A` is labelled natural deduction
+  for relevant implication `R→`. The label `U` is the set of hypotheses actually used:
+  `→I` may only discharge a hypothesis that was used, and `→E` takes the union of the
+  labels. `NRT.RTheorem A` means `A` is derivable with the empty label.
+* `NRT.PHas` is the positively graded fragment of natural reduction types over `ℕ`
+  (every arrow introduced or eliminated has grade `≥ 1`). `NRT.PHas.toHas` shows it is a
+  fragment of `NRT.Has`.
+* `NRT.PHas.toRel` (Curry–Howard, soundness): erasing the grades gives an `R→`
+  derivation whose label is **exactly** the support `{x | V x ≠ 0}` of the neededness
+  function. `NRT.PHas.toRTheorem` covers closed typings. As an example, the contraction
+  axiom `(A → A → B) → A → B` is obtained from the typing of `W = λf x. f x x`
+  (`NRT.wcomb_typing`, `NRT.rtheorem_W`).
+* Grade `0` goes beyond relevant logic. `NRT.rel_sound_sugihara` proves `R→` sound for
+  the three-element Sugihara monoid, and `NRT.rel_not_K` deduces that `A → B → A` is not
+  a theorem of `R→`. `K : σ →₁ τ →₀ σ` is still typeable, so it has no positively
+  graded typing (`NRT.K_not_positive`).
+* The converse direction (lifting every `R→` proof to a graded typing) is not
+  formalized: the note does not say exactly how the correspondence is set up.
+
+## `RequestProject/Normalization.lean` — normalisation ("Curry–Howard–Tait")
+
+* De Bruijn infrastructure: renaming, parallel substitution and their fusion laws. These
+  are connected to the substitution `NRT.subst` used by β-reduction, and
+  `NRT.step_psub` shows β-reduction is stable under substitution.
+* `NRT.strong_normalization`: for any grade semiring, every term typeable in natural
+  reduction types is strongly normalising for full β-reduction. It is proved with Tait's
+  reducibility method (`NRT.Red`, `NRT.cr`, `NRT.red_fundamental`).
+* `NRT.normal_form_head` (grades in `ℕ`): a typeable term reduces to a β-normal form with
+  the same type and neededness function, and no grade-`0` variable is at its head.
+
 ## Not formalized
 
 * Cut elimination for the 1995/1996 logic. The note only mentions it ("proved once,
   generically") and refers to the 1996 paper for it.
 * Completeness of the 1993 system with respect to head neededness.
-* The Curry–Howard correspondence with relevant logic.
+* The converse (completeness) direction of the Curry–Howard correspondence with relevant logic.
 * Non-interference for the trust instance, which the note itself says is absent.

@@ -1,3 +1,27 @@
+# Summary of changes for run 41437202-e7d2-40f7-85f5-4378461e55f3
+I added two new Lean files that cover more of the note's Section 3. The whole project builds, there is no `sorry`, and the new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). `FORMALIZATION.md` now covers both files.
+
+**`RequestProject/RelevantLogic.lean`: the link to relevant logic.** The note says the 1993 system comes "with Curry–Howard to the implicational fragment of relevant logic", but doesn't say exactly how the correspondence is set up. So I formalized one direction, for a restricted part of the system.
+- **Relevant logic:** I defined natural deduction for relevant implication (`NRT.Rel`). Each derivation records which hypotheses it actually uses. Implication introduction may only discharge a hypothesis that was used, and implication elimination combines the used sets.
+- **Positive grades:** `NRT.PHas` is the part of the type system where every arrow that is introduced or eliminated has grade at least 1. It is contained in the full system (`NRT.PHas.toHas`).
+- **Main theorem (`NRT.PHas.toRel`):** erasing the grades from such a typing gives a relevant-logic derivation. Its set of used hypotheses is exactly the set of variables with nonzero grade, \(\{x \mid V(x) \neq 0\}\).
+- **Example:** the contraction axiom \((A \to A \to B) \to A \to B\) follows from the typing of \(W = \lambda f\,x.\ f\,x\,x\) (`NRT.rtheorem_W`).
+- **Grade 0 goes beyond relevant logic:** relevant logic is sound for a three-element algebraic model (`NRT.rel_sound_sugihara`). From this, \(A \to B \to A\) is not a theorem of relevant logic (`NRT.rel_not_K`). But \(K : \sigma \to_1 \tau \to_0 \sigma\) is typeable, so \(K\) has no typing with only positive grades (`NRT.K_not_positive`).
+
+**`RequestProject/Normalization.lean`: normalisation.** This corresponds to the dictionary's "Curry–Howard–Tait" and "generic normalisation" entries.
+- **Strong normalisation (`NRT.strong_normalization`):** for any semiring of grades, every typeable term is strongly normalising for full β-reduction. The proof uses Tait's reducibility method and needed some new infrastructure for substitution, connected to the existing reduction relation.
+- **Corollary (`NRT.normal_form_head`, natural-number grades):** every typeable term reduces to a β-normal form with the same type and the same grades. No variable with grade 0 is at its head.
+
+The three new results are in the Properties table, marked proved.
+
+**Still not formalized:**
+- Lifting every relevant-logic proof back to a graded typing (the converse of the Curry–Howard link).
+- Completeness of the 1993 system with respect to head neededness.
+- Cut elimination for the 1995/1996 logic.
+- Non-interference for the trust instance.
+
+The note doesn't state the first three precisely enough to formalize. It says itself that non-interference is absent.
+
 # Summary of changes for run 52f3701d-99b8-49a9-9583-fb05db6fe3a5
 I formalized the mathematical content of *Counting before Grading* (Sections 3–5) in Lean. Everything builds with no `sorry`, and the only axioms used are the standard ones. Most of the note is history, the comparison table and the discussion of credit; those parts make no mathematical claims, so there was nothing to formalize there. `FORMALIZATION.md` maps each part of the paper to its Lean declaration.
 
