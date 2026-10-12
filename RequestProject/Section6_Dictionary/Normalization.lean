@@ -8,12 +8,12 @@ public import RequestProject.Section3_NaturalReductionTypes.NaturalReductionType
 
 The dictionary of the note pairs "Curry–Howard–Tait to relevant logic" with "generic
 normalisation". This file proves, by Tait's reducibility method, that every term typeable
-in natural reduction types is strongly normalising for full β-reduction — once, for an
-arbitrary grade semiring (`NRT.strong_normalization`).
+in natural reduction types — every term of the grammar `GTm` — is strongly normalising
+for full β-reduction, once, for an arbitrary grade semiring (`NRT.strong_normalization`).
 
 Combined with subject reduction and soundness for head neededness this gives
-`NRT.normal_form_head`: over `ℕ`, a typeable term reduces to a β-normal form, and no
-reduct of the term has a grade-`0` variable at its head.
+`NRT.normal_form_head`: over `ℕ`, a typed term reduces, by typed reduction `GStep`, to a
+typed term whose erasure is β-normal, and no reduct has a grade-`0` variable at its head.
 
 Terms are well scoped (`Tm n`), so reducibility is defined in Kripke style: a term of
 arrow type is reducible if every renaming of it into a larger scope, applied to a
@@ -159,26 +159,27 @@ theorem red_lam {σ τ : Ty R} {n : ℕ} {t : Tm (n + 1)} (hsn : SN t)
             ((cr σ).1 u hu)
       | appR _ hs => exact ihu _ hs ((cr σ).2.1 _ _ hu hs)
 
-/-- **Fundamental lemma**: a typeable term under a reducible substitution is reducible. -/
-theorem red_fundamental [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n → R} {t : Tm n}
-    {τ : Ty R} (h : Has Γ V t τ) :
-    ∀ {m : ℕ} (s : Fin n → Tm m), (∀ x, Red (Γ x) (s x)) → Red τ (subst s t) := by
-  induction h with
+/-- **Fundamental lemma**: a typed term of the grammar, under a reducible substitution, is
+reducible. -/
+theorem red_fundamental [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n → R}
+    {τ : Ty R} (d : GTm Γ V τ) :
+    ∀ {m : ℕ} (s : Fin n → Tm m), (∀ x, Red (Γ x) (s x)) → Red τ (subst s d.erase) := by
+  induction d with
   | var x => intro m s hs; exact hs x
-  | @lam n Γ σ τ V t _ ih =>
+  | @lam n Γ σ τ V d ih =>
     intro m s hs k ρ u hu
-    simp only [subst, NRT.rename, rename_subst]
+    simp only [GTm.erase_lam, subst, NRT.rename, rename_subst]
     rw [show (NRT.rename (liftR ρ) ∘ liftS s) = liftS (fun x => NRT.rename ρ (s x)) from
       rename_liftS ρ s]
     have hsub : ∀ v, Red σ v →
-        Red τ (inst (subst (liftS fun x => NRT.rename ρ (s x)) t) v) := by
+        Red τ (inst (subst (liftS fun x => NRT.rename ρ (s x)) d.erase) v) := by
       intro v hv
       rw [inst_subst_liftS]
       exact ih _ (fun x => by
         cases x using Fin.cases with
         | zero => simpa using hv
         | succ x => simpa using (hs x).rename ρ)
-    have hsn : SN (subst (liftS fun x => NRT.rename ρ (s x)) t) :=
+    have hsn : SN (subst (liftS fun x => NRT.rename ρ (s x)) d.erase) :=
       (cr τ).1 _ (ih _ (fun x => by
         cases x using Fin.cases with
         | zero => simpa using red_var σ 0
@@ -189,13 +190,19 @@ theorem red_fundamental [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n 
     have := ih₁ s hs id _ (ih₂ s hs)
     rwa [rename_id] at this
 
-/-- **Strong normalisation.** Every term typeable in natural reduction types (over any
-grade semiring) is strongly normalising for full β-reduction. -/
+/-- **Strong normalisation.** Every typed term of natural reduction types (over any grade
+semiring) is strongly normalising for full β-reduction. -/
 theorem strong_normalization [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n → R}
-    {t : Tm n} {τ : Ty R} (h : Has Γ V t τ) : SN t := by
-  have := red_fundamental h Tm.var (fun x => red_var _ x)
+    {τ : Ty R} (d : GTm Γ V τ) : SN d.erase := by
+  have := red_fundamental d Tm.var (fun x => red_var _ x)
   rw [subst_var] at this
   exact (cr τ).1 _ this
+
+/-- Strong normalisation for the extrinsic judgement. -/
+theorem Has.sn [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n → R}
+    {t : Tm n} {τ : Ty R} (h : Has Γ V t τ) : SN t := by
+  obtain ⟨d, rfl⟩ := h
+  exact strong_normalization d
 
 /-- `t` is β-normal. -/
 def Normal {n : ℕ} (t : Tm n) : Prop := ∀ t', ¬ Step t t'
@@ -212,21 +219,23 @@ theorem SN.exists_normal {n : ℕ} {t : Tm n} (h : SN t) :
       obtain ⟨t', hr, hn'⟩ := ih t₁ hs
       exact ⟨t', Relation.ReflTransGen.head hs hr, hn'⟩
 
-/-- **Normalisation with head neededness** (grades in `ℕ`). A typeable term reduces to a
-β-normal form of the same type and neededness function, and no reduct — in particular not
-the normal form — has a variable of grade `0` at its head. -/
-theorem normal_form_head {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {t : Tm n} {τ : Ty ℕ}
-    (h : Has Γ V t τ) :
-    ∃ t', Relation.ReflTransGen Step t t' ∧ Normal t' ∧ Has Γ V t' τ ∧
-      ∀ x, V x = 0 → ¬ HeadIs x t' := by
-  obtain ⟨t', hr, hn⟩ := (strong_normalization h).exists_normal
-  exact ⟨t', hr, hn, subject_reduction_star h hr, fun x hx => head_needed_sound h hx hr⟩
+/-- **Normalisation with head neededness** (grades in `ℕ`). A typed term reduces to a
+β-normal form which is again a typed term with the same type and neededness function, and
+no reduct — in particular not the normal form — has a variable of grade `0` at its head. -/
+theorem normal_form_head {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {τ : Ty ℕ}
+    (d : GTm Γ V τ) :
+    ∃ d' : GTm Γ V τ, Relation.ReflTransGen GStep d d' ∧ Normal d'.erase ∧
+      ∀ x, V x = 0 → ¬ HeadIs x d'.erase := by
+  obtain ⟨t', hr, hn⟩ := (strong_normalization d).exists_normal
+  obtain ⟨d', hd', rfl⟩ := d.lift_steps hr
+  exact ⟨d', hd', hn, fun x hx => d.head_needed_sound hx hr⟩
 
-/-- In particular, every closed typeable term (`Tm 0`, empty context) has a β-normal
-form of the same type. -/
-theorem closed_normalizes [Semiring R] {t : Tm 0} {τ : Ty R} (h : Has ![] 0 t τ) :
-    ∃ t', Relation.ReflTransGen Step t t' ∧ Normal t' ∧ Has ![] 0 t' τ := by
-  obtain ⟨t', hr, hn⟩ := (strong_normalization h).exists_normal
-  exact ⟨t', hr, hn, subject_reduction_star h hr⟩
+/-- In particular, every closed typed term reduces to a β-normal form which is again a
+closed typed term of the same type. -/
+theorem closed_normalizes [Semiring R] {τ : Ty R} (d : GTm (R := R) ![] 0 τ) :
+    ∃ d' : GTm ![] 0 τ, Relation.ReflTransGen GStep d d' ∧ Normal d'.erase := by
+  obtain ⟨t', hr, hn⟩ := (strong_normalization d).exists_normal
+  obtain ⟨d', hd', rfl⟩ := d.lift_steps hr
+  exact ⟨d', hd', hn⟩
 
 end NRT

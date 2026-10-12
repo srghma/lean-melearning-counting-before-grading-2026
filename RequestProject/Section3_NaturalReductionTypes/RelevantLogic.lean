@@ -9,28 +9,30 @@ public import RequestProject.Section3_NaturalReductionTypes.NaturalReductionType
 The note states that the 1993 discipline comes "with Curry–Howard to the implicational
 fragment of relevant logic". This file makes the soundness half of that link precise.
 
-* `NRT.Fm` are implicational formulas and `NRT.Rel Γ U A` is the labelled
-  (Anderson–Belnap style) natural deduction for relevant implication `R→`: the label
-  `U` is the set of hypotheses actually used, implication introduction may only discharge
-  a hypothesis that *was* used, and implication elimination takes the union of labels.
-  A theorem of `R→` is a derivation with the empty label.
-* `NRT.PHas` is the positively graded fragment of natural reduction types over `ℕ`
-  (every arrow that is introduced or eliminated has grade `≥ 1`); it is a sub-system
-  of `NRT.Has` (`NRT.PHas.toHas`).
-* `NRT.PHas.toRel` (**Curry–Howard, soundness**): erasing the grades of a positively
-  graded derivation gives an `R→` derivation whose label is *exactly* the support of
-  the neededness function, `{x | V x ≠ 0}`.
+* `NRT.Fm` are implicational formulas.  Relevant implication `R→` is given as a grammar
+  of proof terms: `NRT.RPf Γ U A` is the type of (labelled, Anderson–Belnap style)
+  natural-deduction proofs of `A` from hypotheses `Γ : Fin n → Fm` using exactly the
+  hypotheses in `U`.  Implication introduction may only discharge a hypothesis that *was*
+  used, and implication elimination takes the union of labels.  Derivability `NRT.Rel`
+  is inhabitedness of `RPf`; a theorem of `R→` is a proof with the empty label.
+* `NRT.GTm.Positive` singles out the positively graded typed terms over `ℕ` (every arrow
+  introduced or eliminated has grade `≥ 1`).
+* `NRT.GTm.toRPf` (**Curry–Howard, soundness**): erasing the grades of a positively graded
+  typed term gives a proof term of `R→` — with the *same* underlying λ-term
+  (`NRT.GTm.toRPf_erase`) — whose label is *exactly* the support of the neededness
+  function, `{x | V x ≠ 0}`.
 * The grade `0` is what takes the full system beyond relevant logic: `K : σ →₁ τ →₀ σ`
-  is typeable (`NRT.K_typing`) but `A → B → A` is not a theorem of `R→`
+  is a typed term (`NRT.K`) but `A → B → A` is not a theorem of `R→`
   (`NRT.rel_not_K`), shown by soundness of `R→` for the three-element Sugihara monoid
-  (`NRT.rel_sound_sugihara`).
+  (`NRT.rel_sound_sugihara`); hence no closed typed term of that type is positively graded
+  (`NRT.K_not_positive`).
 -/
 
 @[expose] public section
 
 namespace NRT
 
-/-! ## Relevant implication -/
+/-! ## Relevant implication: the grammar of proof terms -/
 
 /-- Implicational formulas. -/
 inductive Fm : Type
@@ -38,14 +40,58 @@ inductive Fm : Type
   | imp : Fm → Fm → Fm
   deriving DecidableEq
 
-/-- Labelled natural deduction for relevant implication `R→`. `Rel Γ U A`: `A` is derivable
-from the `n` hypotheses `Γ : Fin n → Fm`, using exactly the hypotheses in `U`. -/
-inductive Rel : {n : ℕ} → (Fin n → Fm) → (Fin n → Prop) → Fm → Prop
-  | hyp {n : ℕ} {Γ : Fin n → Fm} (x : Fin n) : Rel Γ (· = x) (Γ x)
+/-- **Relevant implication `R→`, as a grammar of proof terms.**  `RPf Γ U A` is the type
+of (labelled, Anderson–Belnap style) natural-deduction proofs of `A` from the `n`
+hypotheses `Γ : Fin n → Fm` that use *exactly* the hypotheses in `U`.  Implication
+introduction may only discharge a hypothesis that was used; implication elimination takes
+the union of the labels. -/
+inductive RPf : {n : ℕ} → (Fin n → Fm) → (Fin n → Prop) → Fm → Type
+  | hyp {n : ℕ} {Γ : Fin n → Fm} (x : Fin n) : RPf Γ (· = x) (Γ x)
   | impI {n : ℕ} {Γ : Fin n → Fm} {U : Fin (n + 1) → Prop} {A B : Fm} :
-      Rel (Fin.cons A Γ) U B → U 0 → Rel Γ (fun x => U x.succ) (.imp A B)
+      RPf (Fin.cons A Γ) U B → U 0 → RPf Γ (fun x => U x.succ) (.imp A B)
   | impE {n : ℕ} {Γ : Fin n → Fm} {U U' : Fin n → Prop} {A B : Fm} :
-      Rel Γ U (.imp A B) → Rel Γ U' A → Rel Γ (fun x => U x ∨ U' x) B
+      RPf Γ U (.imp A B) → RPf Γ U' A → RPf Γ (fun x => U x ∨ U' x) B
+
+namespace RPf
+
+/-- Curry–Howard: the λ-term of a proof, in the same scope. -/
+def erase {n : ℕ} {Γ : Fin n → Fm} {U : Fin n → Prop} {A : Fm} : RPf Γ U A → Tm n
+  | .hyp x => .var x
+  | .impI p _ => .lam p.erase
+  | .impE p q => .app p.erase q.erase
+
+@[simp] theorem erase_hyp {n : ℕ} {Γ : Fin n → Fm} (x : Fin n) :
+    (RPf.hyp (Γ := Γ) x).erase = .var x := rfl
+@[simp] theorem erase_impI {n : ℕ} {Γ : Fin n → Fm} {U : Fin (n + 1) → Prop} {A B : Fm}
+    (p : RPf (Fin.cons A Γ) U B) (h : U 0) : (RPf.impI p h).erase = .lam p.erase := rfl
+@[simp] theorem erase_impE {n : ℕ} {Γ : Fin n → Fm} {U U' : Fin n → Prop} {A B : Fm}
+    (p : RPf Γ U (.imp A B)) (q : RPf Γ U' A) : (RPf.impE p q).erase = .app p.erase q.erase :=
+  rfl
+
+/-- Transport a proof along equalities of its indices. -/
+def cast {n : ℕ} {Γ Γ' : Fin n → Fm} {U U' : Fin n → Prop} {A A' : Fm}
+    (hΓ : Γ = Γ') (hU : U = U') (hA : A = A') (p : RPf Γ U A) : RPf Γ' U' A' :=
+  hΓ ▸ hU ▸ hA ▸ p
+
+@[simp] theorem erase_cast {n : ℕ} {Γ Γ' : Fin n → Fm} {U U' : Fin n → Prop} {A A' : Fm}
+    (hΓ : Γ = Γ') (hU : U = U') (hA : A = A') (p : RPf Γ U A) :
+    (p.cast hΓ hU hA).erase = p.erase := by
+  subst hΓ hU hA; rfl
+
+end RPf
+
+/-- Derivability in relevant implication: there is a proof term. -/
+def Rel {n : ℕ} (Γ : Fin n → Fm) (U : Fin n → Prop) (A : Fm) : Prop := Nonempty (RPf Γ U A)
+
+theorem Rel.hyp {n : ℕ} {Γ : Fin n → Fm} (x : Fin n) : Rel Γ (· = x) (Γ x) := ⟨.hyp x⟩
+
+theorem Rel.impI {n : ℕ} {Γ : Fin n → Fm} {U : Fin (n + 1) → Prop} {A B : Fm}
+    (h : Rel (Fin.cons A Γ) U B) (h0 : U 0) : Rel Γ (fun x => U x.succ) (.imp A B) :=
+  ⟨.impI h.some h0⟩
+
+theorem Rel.impE {n : ℕ} {Γ : Fin n → Fm} {U U' : Fin n → Prop} {A B : Fm}
+    (h₁ : Rel Γ U (.imp A B)) (h₂ : Rel Γ U' A) : Rel Γ (fun x => U x ∨ U' x) B :=
+  ⟨.impE h₁.some h₂.some⟩
 
 /-- `A` is a theorem of `R→`: derivable from the empty set of hypotheses. -/
 def RTheorem (A : Fm) : Prop := Rel ![] (fun _ => False) A
@@ -53,72 +99,78 @@ def RTheorem (A : Fm) : Prop := Rel ![] (fun _ => False) A
 theorem Rel.congr {n : ℕ} {Γ Γ' : Fin n → Fm} {U U' : Fin n → Prop} {A : Fm} (h : Rel Γ U A)
     (hΓ : Γ = Γ') (hU : U = U') : Rel Γ' U' A := hΓ ▸ hU ▸ h
 
-/-! ## Grade erasure and the positively graded fragment -/
+/-! ## Grade erasure and positively graded terms -/
 
 /-- Erase the grades of a natural reduction type. -/
 def Ty.erase {R : Type} : Ty R → Fm
   | .base n => .atom n
   | .arr _ σ τ => .imp σ.erase τ.erase
 
-/-- The positively graded fragment of natural reduction types over `ℕ`: the same rules
-as `Has`, but every arrow introduced or eliminated carries a grade `≥ 1`. -/
-inductive PHas : {n : ℕ} → (Fin n → Ty ℕ) → (Fin n → ℕ) → Tm n → Ty ℕ → Prop
-  | var {n : ℕ} {Γ : Fin n → Ty ℕ} (x : Fin n) : PHas Γ (single x) (.var x) (Γ x)
-  | lam {n : ℕ} {Γ : Fin n → Ty ℕ} {σ τ : Ty ℕ} {V : Fin (n + 1) → ℕ} {t : Tm (n + 1)} :
-      PHas (Fin.cons σ Γ) V t τ → V 0 ≠ 0 →
-      PHas Γ (fun x => V x.succ) (.lam t) (.arr (V 0) σ τ)
-  | app {n : ℕ} {Γ : Fin n → Ty ℕ} {σ τ : Ty ℕ} {b : ℕ} {V₁ V₂ : Fin n → ℕ} {t u : Tm n} :
-      PHas Γ V₁ t (.arr b σ τ) → PHas Γ V₂ u σ → b ≠ 0 →
-      PHas Γ (fun x => V₁ x + b * V₂ x) (.app t u) τ
+/-- A typed term over `ℕ` is *positively graded* if every arrow it introduces or eliminates
+carries a grade `≥ 1`. -/
+def GTm.Positive {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {τ : Ty ℕ} : GTm Γ V τ → Prop
+  | .var _ => True
+  | @GTm.lam _ _ _ _ _ _ V d => V 0 ≠ 0 ∧ d.Positive
+  | @GTm.app _ _ _ _ _ _ b _ _ d e => b ≠ 0 ∧ d.Positive ∧ e.Positive
 
-/-- The positively graded fragment is a fragment of natural reduction types. -/
-theorem PHas.toHas {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {t : Tm n} {τ : Ty ℕ}
-    (h : PHas Γ V t τ) :
-    Has Γ V t τ := by
-  induction h with
-  | var x => exact Has.var x
-  | lam _ _ ih => exact Has.lam ih
-  | app _ _ _ ih₁ ih₂ => exact Has.app ih₁ ih₂
+@[simp] theorem GTm.positive_cast {n : ℕ} {Γ : Fin n → Ty ℕ} {V V' : Fin n → ℕ}
+    {τ τ' : Ty ℕ} (hV : V = V') (hτ : τ = τ') (d : GTm Γ V τ) :
+    (d.cast hV hτ).Positive ↔ d.Positive := by
+  subst hV hτ; rfl
 
 theorem erase_cons {n : ℕ} (σ : Ty ℕ) (Γ : Fin n → Ty ℕ) :
-    (fun x => ((Fin.cons σ Γ : Fin (n + 1) → Ty ℕ) x).erase) = Fin.cons σ.erase (fun x => (Γ x).erase) := by
+    (fun x => ((Fin.cons σ Γ : Fin (n + 1) → Ty ℕ) x).erase) =
+      Fin.cons σ.erase (fun x => (Γ x).erase) := by
   funext x; cases x using Fin.cases <;> simp
 
-/-- **Curry–Howard, soundness.** Erasing the grades of a positively graded natural
-reduction typing gives a derivation in relevant implication `R→` whose set of used
-hypotheses is exactly the support `{x | V x ≠ 0}` of the neededness function. -/
-theorem PHas.toRel {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {t : Tm n} {τ : Ty ℕ}
-    (h : PHas Γ V t τ) :
-    Rel (fun x => (Γ x).erase) (fun x => V x ≠ 0) τ.erase := by
-  induction h with
-  | var x =>
-    refine (Rel.hyp x).congr rfl ?_
-    funext y; simp [single]
-  | @lam n Γ σ τ V t _ h0 ih =>
-    rw [erase_cons] at ih
-    exact Rel.impI ih h0
-  | @app n Γ σ τ b V₁ V₂ t u _ _ hb ih₁ ih₂ =>
-    refine (Rel.impE ih₁ ih₂).congr rfl ?_
-    funext x; simp [hb]; tauto
+/-- **Curry–Howard, soundness.** Erasing the grades of a positively graded typed term gives
+a proof term of relevant implication `R→`, whose set of used hypotheses is exactly the
+support `{x | V x ≠ 0}` of the neededness function. -/
+def GTm.toRPf {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {τ : Ty ℕ} :
+    (d : GTm Γ V τ) → d.Positive →
+      RPf (fun x => (Γ x).erase) (fun x => V x ≠ 0) τ.erase
+  | .var x, _ => (RPf.hyp x).cast rfl (by funext y; simp [single]) rfl
+  | @GTm.lam _ _ _ _ σ _ _ d, h => RPf.impI ((d.toRPf h.2).cast (erase_cons σ _) rfl rfl) h.1
+  | .app d e, h => (RPf.impE (d.toRPf h.2.1) (e.toRPf h.2.2)).cast rfl
+      (by funext x; simp [h.1]; tauto) rfl
 
-/-- A positively graded typing of a closed term erases to a theorem of `R→`. -/
-theorem PHas.toRTheorem {t : Tm 0} {τ : Ty ℕ} (h : PHas ![] 0 t τ) :
+/-- The proof term of a positively graded typed term *is* the same λ-term. -/
+@[simp] theorem GTm.toRPf_erase {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {τ : Ty ℕ}
+    (d : GTm Γ V τ) (h : d.Positive) : (d.toRPf h).erase = d.erase := by
+  induction d with
+  | var x => simp [GTm.toRPf]
+  | lam d ih => simp [GTm.toRPf, ih]
+  | app d e ihd ihe => simp [GTm.toRPf, ihd, ihe]
+
+/-- Curry–Howard, soundness, at the level of derivability. -/
+theorem GTm.toRel {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {τ : Ty ℕ}
+    (d : GTm Γ V τ) (h : d.Positive) :
+    Rel (fun x => (Γ x).erase) (fun x => V x ≠ 0) τ.erase := ⟨d.toRPf h⟩
+
+/-- A positively graded closed typed term erases to a theorem of `R→`. -/
+theorem GTm.toRTheorem {τ : Ty ℕ} (d : GTm ![] 0 τ) (h : d.Positive) :
     RTheorem τ.erase :=
-  h.toRel.congr (funext fun x => x.elim0) (funext fun x => x.elim0)
+  (d.toRel h).congr (funext fun x => x.elim0) (funext fun x => x.elim0)
 
-/-! ## Examples: `I`, `B`, `W` and `Twice` -/
+/-! ## Example: `W` and contraction -/
 
-/-- `W = λf x. f x x`. -/
-def wcomb : Tm 0 := .lam (.lam (.app (.app (.var 1) (.var 0)) (.var 0)))
+/-- The untyped term `W = λf x. f x x`. -/
+def Tm.wcomb : Tm 0 := .lam (.lam (.app (.app (.var 1) (.var 0)) (.var 0)))
 
-/-- `W : (σ →ᵢ σ →ⱼ τ) →₁ σ →_{i+j} τ`, positively graded when `i, j ≥ 1`. -/
-theorem wcomb_typing (σ τ : Ty ℕ) (i j : ℕ) (hi : i ≠ 0) (hj : j ≠ 0) :
-    PHas ![] 0 wcomb (.arr 1 (.arr i σ (.arr j σ τ)) (.arr (i + j) σ τ)) := by
-  have h := PHas.lam (PHas.lam (PHas.app (PHas.app (PHas.var (Γ := Fin.cons σ (Fin.cons
-    (.arr i σ (.arr j σ τ)) ![])) 1) (PHas.var 0) hi) (PHas.var 0) hj) (by simp [single]; omega)
-    ) (by simp [single])
-  convert h using 2
-  simp [single]
+/-- `W = λf x. f x x : (σ →ᵢ σ →ⱼ τ) →₁ σ →_{i+j} τ`, as a closed typed term. -/
+def W (σ τ : Ty ℕ) (i j : ℕ) :
+    GTm ![] 0 (.arr 1 (.arr i σ (.arr j σ τ)) (.arr (i + j) σ τ)) :=
+  GTm.cast (by funext x; exact x.elim0) (by simp [single])
+    (.lam (.lam (.app (.app (.var (Γ := Fin.cons σ (Fin.cons (.arr i σ (.arr j σ τ)) ![])) 1)
+      (.var 0)) (.var 0))))
+
+@[simp] theorem W_erase (σ τ : Ty ℕ) (i j : ℕ) : (W σ τ i j).erase = Tm.wcomb := by
+  simp [W, Tm.wcomb]
+
+/-- `W` is positively graded when `i, j ≥ 1`. -/
+theorem W_positive (σ τ : Ty ℕ) {i j : ℕ} (hi : i ≠ 0) (hj : j ≠ 0) :
+    (W σ τ i j).Positive := by
+  simp [W, GTm.Positive, single, hi, hj]
 
 /-- The contraction axiom `(A → A → B) → A → B` of `R→`, read off from the typing of `W`. -/
 theorem rtheorem_W (A B : Fm) : RTheorem (.imp (.imp A (.imp A B)) (.imp A B)) := by
@@ -132,7 +184,7 @@ theorem rtheorem_W (A B : Fm) : RTheorem (.imp (.imp A (.imp A B)) (.imp A B)) :
     | atom n => exact ⟨.base n, rfl⟩
     | imp A B ihA ihB =>
       obtain ⟨σ, rfl⟩ := ihA; obtain ⟨τ, rfl⟩ := ihB; exact ⟨.arr 1 σ τ, rfl⟩
-  exact (wcomb_typing σ τ 1 1 one_ne_zero one_ne_zero).toRTheorem
+  exact (W σ τ 1 1).toRTheorem (W_positive σ τ one_ne_zero one_ne_zero)
 
 /-! ## The Sugihara countermodel: `K` is not a theorem of `R→` -/
 
@@ -224,7 +276,8 @@ theorem rel_sound_sugihara {n : ℕ} {Γ : Fin n → Fm} {U : Fin n → Prop} {A
     (h : Rel Γ U A)
     (v : ℕ → Sug) : Sug.le ((usedVals v Γ U).prod id) (A.sval v) := by
   classical
-  induction h with
+  obtain ⟨p⟩ := h
+  induction p with
   | @hyp n Γ x =>
     have : usedVals v Γ (· = x) = {(Γ x).sval v} := by
       ext a; simp [usedVals, eq_comm]
@@ -269,10 +322,13 @@ theorem rel_not_K : ¬ RTheorem (.imp (.atom 0) (.imp (.atom 1) (.atom 0))) := b
   rw [e, Finset.prod_empty] at this
   exact Sug.one_not_le this
 
-/-- `K` erases to `A → B → A`, so its typing `σ →₁ τ →₀ σ` has no positively graded
-counterpart. -/
-theorem K_not_positive :
-    ¬ PHas ![] 0 K (.arr 1 (.base 0) (.arr 0 (.base 1) (.base 0))) :=
-  fun h => rel_not_K h.toRTheorem
+/-- `K : σ →₁ τ →₀ σ` is a typed term, but its type erases to `A → B → A`: **no** closed
+typed term of this type is positively graded. -/
+theorem K_not_positive (d : GTm ![] 0 (.arr 1 (.base 0) (.arr 0 (.base 1) (.base 0)))) :
+    ¬ d.Positive :=
+  fun h => rel_not_K (d.toRTheorem h)
+
+/-- In particular the typed term `K` itself is not positively graded. -/
+example : ¬ (K (.base 0) (.base 1) : GTm ![] 0 _).Positive := K_not_positive _
 
 end NRT

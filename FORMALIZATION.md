@@ -15,7 +15,7 @@ The Lean files are grouped into directories named after the sections of the pape
 
 | Directory | Paper section | Files |
 | --- | --- | --- |
-| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `NaturalReductionTypes.lean`, `RelevantLogic.lean`, `Intrinsic.lean` |
+| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `NaturalReductionTypes.lean`, `RelevantLogic.lean` |
 | `RequestProject/Section4_UnifiedFramework/` | 4. The unified framework (1995) | `ResourceLogic.lean` |
 | `RequestProject/Section5_Instances/` | 5. Three instances (1995) | `Instances.lean` |
 | `RequestProject/Section6_Dictionary/` | 6. A dictionary (generic normalisation) | `Normalization.lean` |
@@ -27,47 +27,71 @@ Sections 1, 2, 7 and 8 contain no formalizable claims, so they have no directory
 | Paper | Lean |
 |---|---|
 | graded arrows `σ →_b τ` | `NRT.Ty.arr b σ τ` |
-| judgement `A ⊢_V M : τ` with neededness function `V` | `NRT.Has Γ V M τ` |
-| App rule, `V(x) = V₁(x) + b × V₂(x)` | constructor `NRT.Has.app` |
+| derivations of `A ⊢_V M : τ` with neededness function `V` | terms of the grammar `NRT.GTm Γ V τ` |
+| App rule, `V(x) = V₁(x) + b × V₂(x)` | constructor `NRT.GTm.app` |
+| the judgement about an untyped term `M` | `NRT.Has Γ V M τ` (derived: `M` is the erasure of some `d : GTm Γ V τ`) |
 
 The type system is generic over any semiring `R` of grades; the 1993 system is `R = ℕ`.
 
-**Well-scoped syntax (correct by construction).** `Syntax.lean` defines terms as an
-indexed family `NRT.Tm : ℕ → Type` with `var : Fin n → Tm n`, `lam : Tm (n+1) → Tm n`
-and `app : Tm n → Tm n → Tm n`. So `Tm n` contains exactly the terms whose free variables
-are among `0, …, n-1`, and `Tm 0` is the type of closed terms. A dangling de Bruijn index
-cannot be written. Renaming (`Fin n → Fin m`), parallel substitution (`Fin n → Tm m`), the
-single substitution `t[u]` used by β (`NRT.inst`) and their fusion laws are in the same
-file.
+**The main grammar: typed, graded terms (correct by construction).** The type system is
+given as an indexed family of terms
 
-The other datatypes follow the same pattern. A typing judgement for `t : Tm n` uses a context
-`Γ : Fin n → Ty R` and a neededness function `V : Fin n → R`, so both give a type and a grade
-to exactly the variables in scope. Closed typings are `NRT.Has ![] 0 t τ`. The relevant-logic
-derivations `NRT.Rel` use `Fin n` hypotheses, and the annotated terms of Section 4 are
-`RML.ATm R n`, which erase to `NRT.Tm n`. The worked examples (`K`, `λx. K x x`, `Twice`,
-`Compose`, `W`) are all closed terms of type `Tm 0`, typed in the empty context.
-`NRT.Has.embed` lets a closed term be used in any scope with no usage of the scope's
-variables.
+```lean
+inductive GTm : {n : ℕ} → (Fin n → Ty R) → (Fin n → R) → Ty R → Type
+  | var (x : Fin n) : GTm Γ (single x) (Γ x)
+  | lam : GTm (Fin.cons σ Γ) V τ → GTm Γ (fun x => V x.succ) (.arr (V 0) σ τ)
+  | app : GTm Γ V₁ (.arr b σ τ) → GTm Γ V₂ σ → GTm Γ (fun x => V₁ x + b * V₂ x) τ
+```
 
-* `NRT.subject_reduction`, `NRT.subject_reduction_star`: β-reduction anywhere in a term
-  preserves the type **and the exact neededness function**. This is proved once for an
-  arbitrary semiring; neither commutativity nor idempotence is needed. It rests on the
-  graded parallel substitution lemma `NRT.Has.subst`: substituting `s x`, used according
-  to `W x`, for every variable `x` gives usage `y ↦ Σₓ V(x)·W(x)(y)`. The graded renaming
-  lemma `NRT.Has.rename` (covering weakening, exchange and contraction) is proved first.
-* `NRT.head_needed_sound` (grades in `ℕ`): suppose a typing gives a free variable `x`
-  grade `0`. Then no β-reduct of the term is a head normal form whose head variable is
-  `x`. This is soundness of grade `0` with respect to head neededness. The 1993 paper
-  also claims a **completeness** result, but the note does not state it precisely
-  enough to formalize, so it is not formalized here.
-* `NRT.kxx_typing` and `NRT.kxx_occurrences` cover "occurrences vs uses": the term
-  `λx. K x x` has type `σ →₁ σ`, so its argument is used once, even though it occurs
-  twice.
-* `NRT.twice_typing`: `Twice = λf x. f (f x)` has type `(σ →ᵢ σ) →_{1+i} σ →_{i·i} σ`.
-  `NRT.compose_typing`: `λg f x. g (f x)` gives `x` the grade `i·j`.
+An element of `GTm Γ V τ` is a λ-term with free variables in `Fin n`, of type `τ`, with
+neededness function `V`. Ill-scoped, ill-typed or wrongly graded terms cannot be written,
+and `GTm ![] 0 τ` is the type of closed terms of type `τ`. `NRT.GTm.erase` (computable,
+defined by pattern matching) gives the underlying untyped term.
+
+**Untyped well-scoped syntax.** `Syntax.lean` defines the untyped terms that typed terms
+erase to: `NRT.Tm : ℕ → Type` with `var : Fin n → Tm n`, `lam : Tm (n+1) → Tm n` and
+`app`, so `Tm 0` is the type of closed terms. Renaming, parallel substitution, the single
+substitution `t[u]` (`NRT.inst`) and β-reduction `NRT.Step` live there.
+
+**Metatheory as operations on typed terms.** Each lemma is a function whose result type
+records the conclusion, together with a lemma saying what it does to the erasure:
+
+* `NRT.GTm.rename` (weakening, exchange, contraction): renaming along `ρ` gives usage
+  `rmap ρ V` (the grade of a new variable is the sum of the grades of the old variables
+  renamed to it). `NRT.GTm.weaken` and `NRT.GTm.embed` (closed terms in any context, with
+  no usage) are special cases.
+* `NRT.GTm.subst` (graded parallel substitution): substituting typed terms `s x` with
+  usage `W x` gives usage `y ↦ Σₓ V(x)·W(x)(y)`. `NRT.GTm.inst` is the typed β-contractum,
+  with usage `y ↦ V(y+1) + V(0)·V₂(y)`.
+* `NRT.GStep` is β-reduction **of typed terms**. Its type
+  `GTm Γ V τ → GTm Γ V τ → Prop` says that the type and the exact neededness function
+  are preserved, so subject reduction holds by construction. `NRT.GStep.erase` shows each
+  typed step is a β-step of the erasures, and `NRT.GTm.lift_step` / `NRT.GTm.lift_steps`
+  show the converse: every β-step of `d.erase` comes from a typed step `GStep d d'`. This
+  is subject reduction, proved once for an arbitrary semiring.
+* `NRT.GTm.head_needed_sound` (grades in `ℕ`): if a typed term gives a free variable `x`
+  grade `0`, then no β-reduct of it is a head normal form whose head variable is `x`. The
+  1993 paper also claims a **completeness** result, but the note does not state it
+  precisely enough to formalize, so it is not formalized here.
+
+**Worked examples, as closed typed terms.**
+
+* `NRT.kxx σ : GTm ![] 0 (σ →₁ σ)` is `λx. K x x` (`NRT.kxx_erase`): its argument is used
+  once, although it occurs twice in the body (`NRT.kxx_occurrences`).
+* `NRT.K σ τ : GTm ![] 0 (σ →₁ τ →₀ σ)`.
+* `NRT.twice σ i : GTm ![] 0 ((σ →ᵢ σ) →_{1+i} σ →_{i·i} σ)` is `λf x. f (f x)`, and
+  `NRT.compose σ₁ σ₂ σ₃ i j` is `λg f x. g (f x)`, giving `x` the grade `i·j`.
   **Note:** the paper says that the derivation for `Twice` produces `i × j`. With simple
   types, `f` has a single arrow grade `i`, so the bound variable gets `i·i`. A genuine
   product `i·j` of two different grades shows up for composition.
+* The untyped terms are `NRT.Tm.K`, `NRT.Tm.kxx`, `NRT.Tm.twice`, `NRT.Tm.compose`;
+  `NRT.kxx_typing`, `NRT.twice_typing`, `NRT.compose_typing` restate the examples with
+  `Has`.
+
+**The extrinsic judgement.** `NRT.Has Γ V t τ` is defined as `∃ d : GTm Γ V τ, d.erase = t`.
+Its rules (`Has.var`, `Has.lam`, `Has.app`) and lemmas (`Has.rename`, `Has.subst`,
+`Has.subject_reduction`, `Has.subject_reduction_star`, `Has.head_needed_sound`) are
+derived from the corresponding operations on `GTm`.
 
 ## `RequestProject/Section4_UnifiedFramework/ResourceLogic.lean` — Section 4 (1995 framework)
 
@@ -109,39 +133,42 @@ variables.
 
 ## `RequestProject/Section3_NaturalReductionTypes/RelevantLogic.lean` — Section 3, Curry–Howard to relevant logic
 
-* `NRT.Fm` are implicational formulas. `NRT.Rel Γ U A` is labelled natural deduction
-  for relevant implication `R→`. The label `U` is the set of hypotheses actually used:
-  `→I` may only discharge a hypothesis that was used, and `→E` takes the union of the
-  labels. `NRT.RTheorem A` means `A` is derivable with the empty label.
-* `NRT.PHas` is the positively graded fragment of natural reduction types over `ℕ`
-  (every arrow introduced or eliminated has grade `≥ 1`). `NRT.PHas.toHas` shows it is a
-  fragment of `NRT.Has`.
-* `NRT.PHas.toRel` (Curry–Howard, soundness): erasing the grades gives an `R→`
-  derivation whose label is **exactly** the support `{x | V x ≠ 0}` of the neededness
-  function. `NRT.PHas.toRTheorem` covers closed typings. As an example, the contraction
-  axiom `(A → A → B) → A → B` is obtained from the typing of `W = λf x. f x x`
-  (`NRT.wcomb_typing`, `NRT.rtheorem_W`).
+* `NRT.Fm` are implicational formulas. Relevant implication `R→` is given as a grammar of
+  proof terms: `NRT.RPf Γ U A` is the type of labelled natural-deduction proofs of `A` from
+  hypotheses `Γ : Fin n → Fm` that use exactly the hypotheses in `U`. `→I` may only
+  discharge a hypothesis that was used, and `→E` takes the union of the labels. Proofs
+  erase to untyped terms (`NRT.RPf.erase`). Derivability `NRT.Rel Γ U A` is defined as
+  `Nonempty (RPf Γ U A)`, and `NRT.RTheorem A` means `A` is derivable with the empty label.
+* `NRT.GTm.Positive` (over `ℕ`) says every arrow a typed term introduces or eliminates has
+  grade `≥ 1`.
+* `NRT.GTm.toRPf` (Curry–Howard, soundness): a positively graded typed term is turned into
+  an `R→` proof term with the same underlying λ-term (`NRT.GTm.toRPf_erase`), whose label
+  is **exactly** the support `{x | V x ≠ 0}` of the neededness function. `NRT.GTm.toRel`
+  and `NRT.GTm.toRTheorem` are the derivability versions. As an example, the contraction
+  axiom `(A → A → B) → A → B` is obtained from the typed term `NRT.W` for
+  `W = λf x. f x x` (`NRT.W_positive`, `NRT.rtheorem_W`).
 * Grade `0` goes beyond relevant logic. `NRT.rel_sound_sugihara` proves `R→` sound for
   the three-element Sugihara monoid, and `NRT.rel_not_K` deduces that `A → B → A` is not
-  a theorem of `R→`. `K : σ →₁ τ →₀ σ` is still typeable, so it has no positively
-  graded typing (`NRT.K_not_positive`).
+  a theorem of `R→`. `K : σ →₁ τ →₀ σ` is still a typed term, so **no** closed typed term
+  of that type is positively graded (`NRT.K_not_positive`).
 * The converse direction (lifting every `R→` proof to a graded typing) is not
   formalized: the note does not say exactly how the correspondence is set up.
 
 ## `RequestProject/Section6_Dictionary/Normalization.lean` — Section 6 (dictionary), normalisation ("Curry–Howard–Tait")
 
-* Renaming and substitution come from `Syntax.lean`. `NRT.Step.rename`, `NRT.Step.subst`
-  and `NRT.Step.of_rename` show that β-reduction commutes with renaming in both directions.
-  Since terms are well scoped, reducibility is defined Kripke-style: a term of arrow type
-  is reducible if every renaming of it into a larger scope, applied to a reducible
-  argument, is reducible.
-* `NRT.strong_normalization`: for any grade semiring, every term typeable in natural
-  reduction types is strongly normalising for full β-reduction. It is proved with Tait's
-  reducibility method (`NRT.Red`, `NRT.cr`, `NRT.red_fundamental`).
-* `NRT.normal_form_head` (grades in `ℕ`): a typeable term reduces to a β-normal form with
-  the same type and neededness function, and no grade-`0` variable is at its head.
-* `NRT.closed_normalizes`: every closed typeable term (`Tm 0`, empty context) reduces to a
-  β-normal form of the same type.
+* `NRT.Step.rename`, `NRT.Step.subst` and `NRT.Step.of_rename` (in `Syntax.lean`) show
+  that β-reduction commutes with renaming in both directions. Since terms are well scoped,
+  reducibility is defined Kripke-style: a term of arrow type is reducible if every renaming
+  of it into a larger scope, applied to a reducible argument, is reducible.
+* `NRT.strong_normalization`: for any grade semiring, the erasure of every typed term
+  `d : GTm Γ V τ` is strongly normalising for full β-reduction. It is proved with Tait's
+  reducibility method (`NRT.Red`, `NRT.cr`, `NRT.red_fundamental`, the last by induction
+  on the typed term). `NRT.Has.sn` is the version for the extrinsic judgement.
+* `NRT.normal_form_head` (grades in `ℕ`): a typed term reduces, by typed reduction
+  `GStep`, to a typed term (same type, same neededness function) whose erasure is β-normal,
+  and no grade-`0` variable is at its head.
+* `NRT.closed_normalizes`: every closed typed term `d : GTm ![] 0 τ` reduces to a closed
+  typed term of the same type whose erasure is β-normal.
 
 ## Not formalized
 
@@ -150,24 +177,3 @@ variables.
 * Completeness of the 1993 system with respect to head neededness.
 * The converse (completeness) direction of the Curry–Howard correspondence with relevant logic.
 * Non-interference for the trust instance, which the note itself says is absent.
-
-
-## `RequestProject/Section3_NaturalReductionTypes/Intrinsic.lean` — intrinsically typed terms
-
-This file goes one step beyond well-scoped syntax: scoping, typing and grading are all
-correct by construction.
-
-| Lean | Meaning |
-|---|---|
-| `NRT.GTm Γ V τ` (for `Γ : Fin n → Ty R`, `V : Fin n → R`) | terms with free variables in `Fin n`, of type `τ`, with neededness function `V`; closed terms of type `τ` are `GTm ![] 0 τ` |
-| `NRT.GTm.erase` | the underlying `Tm n` |
-| `NRT.GTm.has_iff` | `Has Γ V t τ ↔ ∃ d : GTm Γ V τ, d.erase = t` |
-| `NRT.GTm.subject_reduction` | a β-reduct of `d.erase` is the erasure of some `d' : GTm Γ V τ` |
-| `NRT.GTm.sn`, `NRT.GTm.closed_normalizes` | every intrinsic term is strongly normalising; a closed one reduces to a normal closed intrinsic term of the same type |
-| `NRT.gK`, `NRT.gTwice`, `NRT.gCompose` | the worked examples as closed intrinsic terms; their erasures are `K`, `twice`, `compose` |
-| `NRT.RPf Γ U A` | intrinsically scoped proof terms of relevant implication, using exactly the hypotheses in `U`; `RPf.nonempty_iff : Rel Γ U A ↔ Nonempty (RPf Γ U A)` |
-
-The erasure maps are defined with the recursors (the indices of these families are not
-patterns), so they are marked `noncomputable`; the intrinsic terms themselves are ordinary
-data.  `λx. K x x` is not given intrinsically, because it would need intrinsic renaming
-to embed `K` under a binder.

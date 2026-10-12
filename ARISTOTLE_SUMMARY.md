@@ -1,3 +1,37 @@
+# Summary of changes for run c662a164-4bee-4735-8608-72f83bf4aaa8
+The typed, graded terms `GTm` are now the main grammar of the type system, and every result is stated in terms of them. `Intrinsic.lean` has been merged into the main files and deleted. The whole project builds with no `sorry` and no warnings. The key theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+**`Section3_NaturalReductionTypes/NaturalReductionTypes.lean`**
+- **Main grammar:** `GTm Γ V τ` is now defined here. Its three constructors are the three typing rules, so a term with the wrong scope, type or grades can't be written.
+- **Erasure:** `GTm.erase` now uses ordinary pattern matching and is no longer `noncomputable`. For example, `#eval (kxx σ).erase` prints `λx. K x x`.
+- **Untyped terms:** `Syntax.lean` is unchanged. The untyped terms `Tm n` are still what typed terms erase to and where β-reduction is defined.
+- **Operations on typed terms:** renaming, weakening, embedding a closed term, graded substitution \(y \mapsto \sum_x V(x)\,W(x)(y)\) and the β-contractum (`GTm.inst`) now act directly on typed terms. The resulting grades show up in each result's type, and each operation has a lemma saying what it does to the erasure.
+- **Typed reduction (`GStep`):** a new reduction relation on typed terms. A step goes from `GTm Γ V τ` to `GTm Γ V τ`, so it keeps the type and grades by construction.
+- **Subject reduction (`GTm.lift_step`, `GTm.lift_steps`):** every β-step of `d.erase` comes from a typed step `GStep d d'`. `GStep.erase` gives the converse.
+- **Head neededness:** `GTm.head_needed_sound` is now stated for typed terms.
+- **Worked examples as closed typed terms:** `K`, `twice` and `compose`. `kxx` (\(\lambda x.\,K\,x\,x\)) is now also typed; the earlier version couldn't build it because typed renaming was missing. Each comes with a lemma giving its erasure. The untyped versions are now `Tm.K`, `Tm.kxx` and so on.
+- **`Has`:** now *defined* as "`t` is the erasure of some `d : GTm Γ V τ`". Its rules and lemmas (renaming, substitution, subject reduction, head neededness) are derived from the typed versions.
+
+**`Section3_NaturalReductionTypes/RelevantLogic.lean`**
+- **Proof terms:** `RPf` (proofs that use exactly the hypotheses in `U`) is now the main grammar, and `Rel` is defined as `Nonempty RPf`.
+- **Positive grading:** the old `PHas` predicate is replaced by `GTm.Positive`, a condition on typed terms.
+- **Curry–Howard (`GTm.toRPf`, `GTm.toRel`):** a positively graded typed term becomes a relevant-logic proof term whose set of used hypotheses is exactly \(\{x \mid V(x) \neq 0\}\). `GTm.toRPf_erase` shows the proof term has the same underlying λ-term.
+- **Contraction example:** `W` is now a typed term, with `W_positive`.
+- **`K_not_positive` (stronger than before):** *no* closed typed term of type \(\sigma \to_1 \tau \to_0 \sigma\) is positively graded.
+
+**`Section6_Dictionary/Normalization.lean`**
+- `strong_normalization`: the erasure of every typed term is strongly normalising. The key lemma is now proved by induction on the typed term, and `Has.sn` gives the version for `Has`.
+- `normal_form_head` and `closed_normalizes`: these now produce a typed normal form, reached by typed reduction.
+
+**Renamed or removed statements:** top-level `subject_reduction` and `subject_reduction_star` are now `Has.subject_reduction` and `Has.subject_reduction_star`. `PHas` and `PHas.toRel` are replaced by `GTm.Positive` and `GTm.toRel`. `GTm.has_iff` and `RPf.nonempty_iff` are gone, because `Has` and `Rel` are now defined by those equivalences.
+
+**Records:**
+- `FORMALIZATION.md` describes the new structure.
+- In the Properties table:
+  - The affected entries are updated and still marked proved.
+  - `GStep` and `RPf` are added.
+  - The two equivalence entries are removed.
+
 # Summary of changes for run 3b4ff10d-689a-4c1d-a8b5-f23d69419828
 I added a new Lean file, `RequestProject/Section3_NaturalReductionTypes/Intrinsic.lean`, in which typing and grading, not just scoping, are correct by construction. The whole project builds with no `sorry`, and the new results use only the standard axioms.
 
