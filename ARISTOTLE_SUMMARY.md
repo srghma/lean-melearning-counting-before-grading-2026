@@ -1,3 +1,17 @@
+# Summary of changes for run 6bb44566-c02f-447a-a28c-36acdbcb10db
+I moved the Lean files into directories named after the sections of the paper:
+
+- `RequestProject/Section3_NaturalReductionTypes/`: `NaturalReductionTypes.lean` (the 1993 system) and `RelevantLogic.lean` (the Curry–Howard link to relevant logic, which the paper states in Section 3).
+- `RequestProject/Section4_UnifiedFramework/`: `ResourceLogic.lean` (the 1995 framework).
+- `RequestProject/Section5_Instances/`: `Instances.lean` (the three instances).
+- `RequestProject/Section6_Dictionary/`: `Normalization.lean` (strong normalisation, matching the dictionary's "Curry–Howard–Tait" and "generic normalisation" entries).
+
+`Normalization.lean` was the one judgement call. It proves strong normalisation for the 1993 system, so it could also have gone under Section 3. I put it in Section 6 because the paper names this result in the dictionary. Sections 1, 2, 7 and 8 make no formal claims, so they have no directory. `RequestProject/Main.lean` stays where it was.
+
+Moving the files changed their module names, so I updated the `import` lines that refer to them. In `FORMALIZATION.md`, I updated the file paths and added a short "Layout" table matching directories to paper sections. The Properties table entries now point to the new file locations, and their statuses are unchanged.
+
+The full project builds successfully with the new layout, and there is no `sorry` anywhere. The proofs themselves were not edited.
+
 # Summary of changes for run 41437202-e7d2-40f7-85f5-4378461e55f3
 I added two new Lean files that cover more of the note's Section 3. The whole project builds, there is no `sorry`, and the new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). `FORMALIZATION.md` now covers both files.
 

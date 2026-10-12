@@ -1,7 +1,7 @@
 module
 
 public import Mathlib
-public import RequestProject.NaturalReductionTypes
+public import RequestProject.Section3_NaturalReductionTypes.NaturalReductionTypes
 
 /-!
 # The unified framework (Sections 4–5 of *Counting before Grading*)

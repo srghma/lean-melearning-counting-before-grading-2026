@@ -1,7 +1,7 @@
 module
 
 public import Mathlib
-public import RequestProject.ResourceLogic
+public import RequestProject.Section4_UnifiedFramework.ResourceLogic
 
 /-!
 # Three instances of the 1995 framework (Section 5), and the idempotence dial

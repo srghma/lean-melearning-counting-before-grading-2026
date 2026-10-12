@@ -9,7 +9,20 @@ that the note relies on.
 All files build with no `sorry`. The only axioms used are the standard ones
 (`propext`, `Classical.choice`, `Quot.sound`).
 
-## `RequestProject/NaturalReductionTypes.lean` — Section 3 (1993 system)
+## Layout
+
+The Lean files are grouped into directories named after the sections of the paper:
+
+| Directory | Paper section | Files |
+| --- | --- | --- |
+| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `NaturalReductionTypes.lean`, `RelevantLogic.lean` |
+| `RequestProject/Section4_UnifiedFramework/` | 4. The unified framework (1995) | `ResourceLogic.lean` |
+| `RequestProject/Section5_Instances/` | 5. Three instances (1995) | `Instances.lean` |
+| `RequestProject/Section6_Dictionary/` | 6. A dictionary (generic normalisation) | `Normalization.lean` |
+
+Sections 1, 2, 7 and 8 contain no formalizable claims, so they have no directory.
+
+## `RequestProject/Section3_NaturalReductionTypes/NaturalReductionTypes.lean` — Section 3 (1993 system)
 
 | Paper | Lean |
 |---|---|
@@ -39,7 +52,7 @@ variable.
   types, `f` has a single arrow grade `i`, so the bound variable gets `i·i`. A genuine
   product `i·j` of two different grades shows up for composition.
 
-## `RequestProject/ResourceLogic.lean` — Section 4 (1995 framework)
+## `RequestProject/Section4_UnifiedFramework/ResourceLogic.lean` — Section 4 (1995 framework)
 
 * `RML.Deriv P sc Ψ Γ Δ Θ` is the four-zone sequent `Ψ; Γ ⊢ Δ; Θ`. It is parametric in an
   annotation algebra (`+`, `·`, `0`, `1`) and in permeability operators `P`, which are
@@ -59,7 +72,7 @@ variable.
   satisfies it. For `k = 0` the condition cannot be met, which is why `k ≥ 1` is
   required.
 
-## `RequestProject/Instances.lean` — Section 5 (instances) and the idempotence dial
+## `RequestProject/Section5_Instances/Instances.lean` — Section 5 (instances) and the idempotence dial
 
 * `RML.BT` is binding-time logic (`D = 0`, `S = 1`, join and meet). `RML.bt_table`
   checks the paper's eight-row combination table for `(i + k) j`, and
@@ -77,7 +90,7 @@ variable.
   fails for `ℕ`, where `1 + 1 = 2`. `RML.nat_scale_admissible` instantiates admissible
   scaling for the usage instance `ℕ` with any `k ≥ 1`.
 
-## `RequestProject/RelevantLogic.lean` — Section 3, Curry–Howard to relevant logic
+## `RequestProject/Section3_NaturalReductionTypes/RelevantLogic.lean` — Section 3, Curry–Howard to relevant logic
 
 * `NRT.Fm` are implicational formulas. `NRT.Rel Γ U A` is labelled natural deduction
   for relevant implication `R→`. The label `U` is the set of hypotheses actually used:
@@ -98,7 +111,7 @@ variable.
 * The converse direction (lifting every `R→` proof to a graded typing) is not
   formalized: the note does not say exactly how the correspondence is set up.
 
-## `RequestProject/Normalization.lean` — normalisation ("Curry–Howard–Tait")
+## `RequestProject/Section6_Dictionary/Normalization.lean` — Section 6 (dictionary), normalisation ("Curry–Howard–Tait")
 
 * De Bruijn infrastructure: renaming, parallel substitution and their fusion laws. These
   are connected to the substitution `NRT.subst` used by β-reduction, and

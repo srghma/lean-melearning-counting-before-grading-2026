@@ -1,7 +1,7 @@
 module
 
 public import Mathlib
-public import RequestProject.NaturalReductionTypes
+public import RequestProject.Section3_NaturalReductionTypes.NaturalReductionTypes
 
 /-!
 # Strong normalisation of natural reduction types (Curry–Howard–Tait)

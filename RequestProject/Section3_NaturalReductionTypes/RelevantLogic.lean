@@ -1,7 +1,7 @@
 module
 
 public import Mathlib
-public import RequestProject.NaturalReductionTypes
+public import RequestProject.Section3_NaturalReductionTypes.NaturalReductionTypes
 
 /-!
 # Natural reduction types and relevant implication (Section 3, Curry–Howard)
