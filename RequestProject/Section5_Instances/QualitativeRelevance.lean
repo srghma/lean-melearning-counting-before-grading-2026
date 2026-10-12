@@ -24,6 +24,8 @@ non-interference theorem, which the note itself says is absent.
 
 namespace RML
 
+variable {B : Type}
+
 instance : Nontrivial Trust := ⟨⟨.U, .T, by decide⟩⟩
 
 instance : NoZeroDivisors Trust where
@@ -37,14 +39,14 @@ instance : NoZeroDivisors BT where
 /-- **Trust-graded Curry–Howard.**  Relevant derivability of `A` from `Γ` using exactly the
 hypotheses `U` is the same as a positively trust-graded typed term in context `Γ` of type
 `A` whose trusted (`T`) variables are exactly `U`. -/
-theorem trust_rel_iff_positive {n : ℕ} (Γ : Fin n → NRT.Fm) (U : Fin n → Prop) (A : NRT.Fm) :
+theorem trust_rel_iff_positive {n : ℕ} (Γ : Fin n → NRT.Fm B) (U : Fin n → Prop) (A : NRT.Fm B) :
     NRT.Rel Γ U A ↔ ∃ (V : Fin n → Trust)
       (d : NRT.GTm (fun x => (Γ x).toTy Trust) V (A.toTy Trust)),
       d.PositiveR ∧ ∀ x, V x ≠ 0 ↔ U x :=
   NRT.rel_iff_positive trust_one_add_one (by decide) Γ U A
 
 /-- **Binding-time-graded Curry–Howard**, likewise. -/
-theorem bt_rel_iff_positive {n : ℕ} (Γ : Fin n → NRT.Fm) (U : Fin n → Prop) (A : NRT.Fm) :
+theorem bt_rel_iff_positive {n : ℕ} (Γ : Fin n → NRT.Fm B) (U : Fin n → Prop) (A : NRT.Fm B) :
     NRT.Rel Γ U A ↔ ∃ (V : Fin n → BT)
       (d : NRT.GTm (fun x => (Γ x).toTy BT) V (A.toTy BT)),
       d.PositiveR ∧ ∀ x, V x ≠ 0 ↔ U x :=
@@ -52,29 +54,29 @@ theorem bt_rel_iff_positive {n : ℕ} (Γ : Fin n → NRT.Fm) (U : Fin n → Pro
 
 /-- The proof term `λh a k. k (h (λx. x)) (h (λx. a x x))` of relevant implication *is* a
 positively trust-graded closed typed term (same λ-term)… -/
-theorem relW2_trust :
-    ∃ d : NRT.GTm ![] 0 (NRT.relW2Fm.toTy Trust), d.PositiveR ∧ d.erase = NRT.Tm.relW2 := by
-  refine ⟨(NRT.relW2.toGTm trust_one_add_one).ctxCast (funext fun x => x.elim0) |>.cast
+theorem relW2_trust (a b c : B) :
+    ∃ d : NRT.GTm ![] 0 ((NRT.relW2Fm a b c).toTy Trust), d.PositiveR ∧ d.erase = NRT.Tm.relW2 := by
+  refine ⟨((NRT.relW2 a b c).toGTm trust_one_add_one).ctxCast (funext fun x => x.elim0) |>.cast
     (funext fun x => x.elim0) rfl, ?_, ?_⟩
-  · simpa using NRT.relW2.toGTm_positive trust_one_add_one (by decide)
+  · simpa using (NRT.relW2 a b c).toGTm_positive trust_one_add_one (by decide)
   · simp
 
 /-- …but no positively `ℕ`-graded closed typed term has this λ-term. -/
-theorem relW2_not_nat {τ : NRT.Ty ℕ} (d : NRT.GTm ![] 0 τ) (hd : d.erase = NRT.Tm.relW2) :
+theorem relW2_not_nat {τ : NRT.Ty B ℕ} (d : NRT.GTm ![] 0 τ) (hd : d.erase = NRT.Tm.relW2) :
     ¬ d.Positive :=
-  NRT.not_positive_relW2 d (by simpa using hd)
+  NRT.not_positive_relW2 d hd
 
 /-- In the trust instance, an untrusted variable never reaches head position in any
 reduct. -/
-theorem trust_untrusted_not_head {n : ℕ} {Γ : Fin n → NRT.Ty Trust} {V : Fin n → Trust}
-    {τ : NRT.Ty Trust} (d : NRT.GTm Γ V τ) {x : Fin n} (hx : V x = .U) {t' : NRT.Tm n}
+theorem trust_untrusted_not_head {n : ℕ} {Γ : Fin n → NRT.Ty B Trust} {V : Fin n → Trust}
+    {τ : NRT.Ty B Trust} (d : NRT.GTm Γ V τ) {x : Fin n} (hx : V x = .U) {t' : NRT.Tm n}
     (hred : Relation.ReflTransGen NRT.Step d.erase t') : ¬ NRT.HeadIs x t' :=
   d.head_needed_sound_gen (by decide) hx hred
 
 /-- In the binding-time instance, a dynamic variable never reaches head position in any
 reduct. -/
-theorem bt_dynamic_not_head {n : ℕ} {Γ : Fin n → NRT.Ty BT} {V : Fin n → BT}
-    {τ : NRT.Ty BT} (d : NRT.GTm Γ V τ) {x : Fin n} (hx : V x = .D) {t' : NRT.Tm n}
+theorem bt_dynamic_not_head {n : ℕ} {Γ : Fin n → NRT.Ty B BT} {V : Fin n → BT}
+    {τ : NRT.Ty B BT} (d : NRT.GTm Γ V τ) {x : Fin n} (hx : V x = .D) {t' : NRT.Tm n}
     (hred : Relation.ReflTransGen NRT.Step d.erase t') : ¬ NRT.HeadIs x t' :=
   d.head_needed_sound_gen (by decide) hx hred
 

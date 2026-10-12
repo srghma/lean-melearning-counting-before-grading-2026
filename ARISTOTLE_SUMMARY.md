@@ -1,3 +1,28 @@
+# Summary of changes for run 79531985-77ad-416a-9a46-a949937f8343
+`Ty` now takes the type of base types as a parameter, so base types are no longer fixed to `ℕ`:
+
+```lean
+inductive Ty (B : Type) (R : Type) : Type
+  | base : B → Ty B R
+  | arr : R → Ty B R → Ty B R → Ty B R
+```
+
+The whole project builds with no errors, no warnings and no `sorry`. I spot-checked the axioms of four of the changed theorems (`not_positive_relW2`, `K_not_positive`, `relW2_trust`, `strong_normalization`); they use only the standard ones. The work is committed.
+
+**What changed**
+- **Everywhere `Ty` is used:** every `Ty R` / `Ty ℕ` is now `Ty B R` / `Ty B ℕ`, with an implicit `{B : Type}`. This covers `NaturalReductionTypes.lean`, `HeadNeededGeneral.lean`, `RelevantLogic.lean`, `RelevantCompleteness.lean`, `QualitativeRelevance.lean` and `Normalization.lean`. Every theorem now holds for any type of base types, not just `ℕ`. `ℕ` is used only in one small worked `example` about `K`.
+- **Relevant-logic formulas:** grade erasure turns `base β` into a formula atom, so the formulas had to change too. `NRT.Fm` is now `Fm B` with `atom : B → Fm B`, using the same `B`. Because `B` now names this type, I renamed formula variables called `B` to `C` (for example in `RPf`, `Rel.impI` and `rtheorem_W`). The Sugihara valuations now have type `B → Sug`.
+- **Examples that used fixed atom numbers:**
+  - `rel_not_K` and `K_not_positive` now take any two base types `a c : B` with `a ≠ c`.
+  - The counterexample formula `relW2Fm` and its proof `relW2` now take three atoms `a b c : B`.
+  - `not_positive_relW2` and `relW2_not_nat` are now stated directly about the λ-term `Tm.relW2`. That λ-term doesn't depend on the atoms.
+  - `relW2_trust` takes the three atoms `a b c`.
+- **Docs:** `FORMALIZATION.md` and the docstrings now describe the `B` parameter.
+
+**Properties table:** I updated the Lean statements of the affected entries to match. Their statuses are unchanged: everything that was proved still builds. I also added an entry for the `Ty` definition itself.
+
+**Not changed:** the Section 4 resource-logic formulas (`RML.Fm R` in `ResourceLogic.lean`) still use `atom : ℕ → Fm R`. You didn't ask for that file, but it is the same pattern and could be parametrized the same way.
+
 # Summary of changes for run 0be5d7dd-5716-4fd6-9b34-3d7af0fc4623
 I removed all three `omit ... in` uses from the project. Instead of declaring every type-class assumption up front and then omitting some, each file now adds an assumption only at the point where the following declarations start to need it. The whole project builds with no errors, no warnings and no `sorry`. No statement or proof changed, only where declarations sit in their files.
 

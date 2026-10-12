@@ -81,11 +81,11 @@ theorem rename_liftS {n m k : ℕ} (ρ : Fin m → Fin k) (s : Fin n → Tm m) :
 
 /-! ## Reducibility candidates -/
 
-variable {R : Type}
+variable {B : Type} {R : Type}
 
 /-- Tait's reducibility predicate, by recursion on the (grade-erased) type, in Kripke
 style over scopes. -/
-def Red : Ty R → {n : ℕ} → Tm n → Prop
+def Red : Ty B R → {n : ℕ} → Tm n → Prop
   | .base _, _, t => SN t
   | .arr _ σ τ, n, t =>
       ∀ {m : ℕ} (ρ : Fin n → Fin m) (u : Tm m), Red σ u → Red τ (.app (rename ρ t) u)
@@ -94,7 +94,7 @@ theorem var_no_step {n : ℕ} {x : Fin n} {t : Tm n} : ¬ Step (.var x) t := by
   intro h; cases h
 
 /-- Reducibility is stable under renaming. -/
-theorem Red.rename {τ : Ty R} {n m : ℕ} (ρ : Fin n → Fin m) {t : Tm n} (h : Red τ t) :
+theorem Red.rename {τ : Ty B R} {n m : ℕ} (ρ : Fin n → Fin m) {t : Tm n} (h : Red τ t) :
     Red τ (NRT.rename ρ t) := by
   cases τ with
   | base => exact SN.rename ρ h
@@ -104,7 +104,7 @@ theorem Red.rename {τ : Ty R} {n m : ℕ} (ρ : Fin n → Fin m) {t : Tm n} (h 
     exact h (ρ' ∘ ρ) u hu
 
 /-- The three properties CR1–CR3 of reducibility candidates. -/
-theorem cr (τ : Ty R) :
+theorem cr (τ : Ty B R) :
     (∀ {n : ℕ} (t : Tm n), Red τ t → SN t) ∧
     (∀ {n : ℕ} (t t' : Tm n), Red τ t → Step t t' → Red τ t') ∧
     (∀ {n : ℕ} (t : Tm n), Neutral t → (∀ t', Step t t' → Red τ t') → Red τ t) := by
@@ -136,11 +136,11 @@ theorem cr (τ : Ty R) :
           exact h t' hst ρ u hu
         | appR _ hs => subst hr; exact ih _ hs (cr2σ _ _ hu hs)
 
-theorem red_var (τ : Ty R) {n : ℕ} (x : Fin n) : Red τ (.var x) :=
+theorem red_var (τ : Ty B R) {n : ℕ} (x : Fin n) : Red τ (.var x) :=
   (cr τ).2.2 _ trivial (fun _ hs => absurd hs var_no_step)
 
 /-- The abstraction lemma. -/
-theorem red_lam {σ τ : Ty R} {n : ℕ} {t : Tm (n + 1)} (hsn : SN t)
+theorem red_lam {σ τ : Ty B R} {n : ℕ} {t : Tm (n + 1)} (hsn : SN t)
     (h : ∀ v, Red σ v → Red τ (inst t v)) {u : Tm n} (hu : Red σ u) :
     Red τ (.app (.lam t) u) := by
   have hu' : SN u := (cr σ).1 u hu
@@ -161,8 +161,8 @@ theorem red_lam {σ τ : Ty R} {n : ℕ} {t : Tm (n + 1)} (hsn : SN t)
 
 /-- **Fundamental lemma**: a typed term of the grammar, under a reducible substitution, is
 reducible. -/
-theorem red_fundamental [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n → R}
-    {τ : Ty R} (d : GTm Γ V τ) :
+theorem red_fundamental [Semiring R] {n : ℕ} {Γ : Fin n → Ty B R} {V : Fin n → R}
+    {τ : Ty B R} (d : GTm Γ V τ) :
     ∀ {m : ℕ} (s : Fin n → Tm m), (∀ x, Red (Γ x) (s x)) → Red τ (subst s d.erase) := by
   induction d with
   | var x => intro m s hs; exact hs x
@@ -192,15 +192,15 @@ theorem red_fundamental [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n 
 
 /-- **Strong normalisation.** Every typed term of natural reduction types (over any grade
 semiring) is strongly normalising for full β-reduction. -/
-theorem strong_normalization [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n → R}
-    {τ : Ty R} (d : GTm Γ V τ) : SN d.erase := by
+theorem strong_normalization [Semiring R] {n : ℕ} {Γ : Fin n → Ty B R} {V : Fin n → R}
+    {τ : Ty B R} (d : GTm Γ V τ) : SN d.erase := by
   have := red_fundamental d Tm.var (fun x => red_var _ x)
   rw [subst_var] at this
   exact (cr τ).1 _ this
 
 /-- Strong normalisation for the extrinsic judgement. -/
-theorem Has.sn [Semiring R] {n : ℕ} {Γ : Fin n → Ty R} {V : Fin n → R}
-    {t : Tm n} {τ : Ty R} (h : Has Γ V t τ) : SN t := by
+theorem Has.sn [Semiring R] {n : ℕ} {Γ : Fin n → Ty B R} {V : Fin n → R}
+    {t : Tm n} {τ : Ty B R} (h : Has Γ V t τ) : SN t := by
   obtain ⟨d, rfl⟩ := h
   exact strong_normalization d
 
@@ -222,7 +222,7 @@ theorem SN.exists_normal {n : ℕ} {t : Tm n} (h : SN t) :
 /-- **Normalisation with head neededness** (grades in `ℕ`). A typed term reduces to a
 β-normal form which is again a typed term with the same type and neededness function, and
 no reduct — in particular not the normal form — has a variable of grade `0` at its head. -/
-theorem normal_form_head {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {τ : Ty ℕ}
+theorem normal_form_head {n : ℕ} {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {τ : Ty B ℕ}
     (d : GTm Γ V τ) :
     ∃ d' : GTm Γ V τ, Relation.ReflTransGen GStep d d' ∧ Normal d'.erase ∧
       ∀ x, V x = 0 → ¬ HeadIs x d'.erase := by
@@ -232,7 +232,7 @@ theorem normal_form_head {n : ℕ} {Γ : Fin n → Ty ℕ} {V : Fin n → ℕ} {
 
 /-- In particular, every closed typed term reduces to a β-normal form which is again a
 closed typed term of the same type. -/
-theorem closed_normalizes [Semiring R] {τ : Ty R} (d : GTm (R := R) ![] 0 τ) :
+theorem closed_normalizes [Semiring R] {τ : Ty B R} (d : GTm (R := R) ![] 0 τ) :
     ∃ d' : GTm ![] 0 τ, Relation.ReflTransGen GStep d d' ∧ Normal d'.erase := by
   obtain ⟨t', hr, hn⟩ := (strong_normalization d).exists_normal
   obtain ⟨d', hd', rfl⟩ := d.lift_steps hr

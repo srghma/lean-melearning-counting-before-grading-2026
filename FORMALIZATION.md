@@ -26,18 +26,20 @@ Sections 1, 2, 7 and 8 contain no formalizable claims, so they have no directory
 
 | Paper | Lean |
 |---|---|
+| base types | `NRT.Ty.base β`, for `β : B` (the type `B` of base-type names is a parameter) |
 | graded arrows `σ →_b τ` | `NRT.Ty.arr b σ τ` |
 | derivations of `A ⊢_V M : τ` with neededness function `V` | terms of the grammar `NRT.GTm Γ V τ` |
 | App rule, `V(x) = V₁(x) + b × V₂(x)` | constructor `NRT.GTm.app` |
 | the judgement about an untyped term `M` | `NRT.Has Γ V M τ` (derived: `M` is the erasure of some `d : GTm Γ V τ`) |
 
-The type system is generic over any semiring `R` of grades; the 1993 system is `R = ℕ`.
+Types `NRT.Ty B R` are parametrized by the type `B` of base types and the grades `R`. The type
+system is generic over any semiring `R` of grades; the 1993 system is `R = ℕ`.
 
 **The main grammar: typed, graded terms (correct by construction).** The type system is
 given as an indexed family of terms
 
 ```lean
-inductive GTm : {n : ℕ} → (Fin n → Ty R) → (Fin n → R) → Ty R → Type
+inductive GTm : {n : ℕ} → (Fin n → Ty B R) → (Fin n → R) → Ty B R → Type
   | var (x : Fin n) : GTm Γ (single x) (Γ x)
   | lam : GTm (Fin.cons σ Γ) V τ → GTm Γ (fun x => V x.succ) (.arr (V 0) σ τ)
   | app : GTm Γ V₁ (.arr b σ τ) → GTm Γ V₂ σ → GTm Γ (fun x => V₁ x + b * V₂ x) τ
@@ -133,9 +135,10 @@ derived from the corresponding operations on `GTm`.
 
 ## `RequestProject/Section3_NaturalReductionTypes/RelevantLogic.lean` — Section 3, Curry–Howard to relevant logic
 
-* `NRT.Fm` are implicational formulas. Relevant implication `R→` is given as a grammar of
+* `NRT.Fm B` are implicational formulas over atoms indexed by `B` (the same `B` as the base
+  types; grade erasure `NRT.Ty.erase` sends `base β` to `atom β`). Relevant implication `R→` is given as a grammar of
   proof terms: `NRT.RPf Γ U A` is the type of labelled natural-deduction proofs of `A` from
-  hypotheses `Γ : Fin n → Fm` that use exactly the hypotheses in `U`. `→I` may only
+  hypotheses `Γ : Fin n → Fm B` that use exactly the hypotheses in `U`. `→I` may only
   discharge a hypothesis that was used, and `→E` takes the union of the labels. Proofs
   erase to untyped terms (`NRT.RPf.erase`). Derivability `NRT.Rel Γ U A` is defined as
   `Nonempty (RPf Γ U A)`, and `NRT.RTheorem A` means `A` is derivable with the empty label.
@@ -145,11 +148,11 @@ derived from the corresponding operations on `GTm`.
   an `R→` proof term with the same underlying λ-term (`NRT.GTm.toRPf_erase`), whose label
   is **exactly** the support `{x | V x ≠ 0}` of the neededness function. `NRT.GTm.toRel`
   and `NRT.GTm.toRTheorem` are the derivability versions. As an example, the contraction
-  axiom `(A → A → B) → A → B` is obtained from the typed term `NRT.W` for
+  axiom `(A → A → C) → A → C` is obtained from the typed term `NRT.W` for
   `W = λf x. f x x` (`NRT.W_positive`, `NRT.rtheorem_W`).
 * Grade `0` goes beyond relevant logic. `NRT.rel_sound_sugihara` proves `R→` sound for
-  the three-element Sugihara monoid, and `NRT.rel_not_K` deduces that `A → B → A` is not
-  a theorem of `R→`. `K : σ →₁ τ →₀ σ` is still a typed term, so **no** closed typed term
+  the three-element Sugihara monoid, and `NRT.rel_not_K` deduces that `A → C → A` is not
+  a theorem of `R→` for distinct atoms `A`, `C`. `K : σ →₁ τ →₀ σ` is still a typed term, so **no** closed typed term
   of that type is positively graded (`NRT.K_not_positive`).
 * The converse direction (lifting every `R→` proof to a graded typing) is not
   formalized: the note does not say exactly how the correspondence is set up.

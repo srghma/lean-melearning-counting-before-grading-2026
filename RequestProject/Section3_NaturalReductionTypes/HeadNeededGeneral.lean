@@ -18,10 +18,10 @@ namespace NRT
 
 namespace GTm
 
-variable {R : Type} [Semiring R] [Nontrivial R]
+variable {B : Type} {R : Type} [Semiring R] [Nontrivial R]
 
-theorem spine_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ : Fin n → Ty R}
-    {V : Fin n → R} {τ : Ty R} (d : GTm Γ V τ) {x : Fin n} (hs : Spine x d.erase) :
+theorem spine_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ : Fin n → Ty B R}
+    {V : Fin n → R} {τ : Ty B R} (d : GTm Γ V τ) {x : Fin n} (hs : Spine x d.erase) :
     V x ≠ 0 := by
   induction d with
   | var y => cases hs; simp [single]
@@ -31,8 +31,8 @@ theorem spine_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ 
     | app _ hs => exact fun h0 => ihd hs (hzs _ _ h0)
 
 /-- The head variable of a typed head normal form has a nonzero grade. -/
-theorem head_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ : Fin n → Ty R}
-    {V : Fin n → R} {τ : Ty R} (d : GTm Γ V τ) {x : Fin n} (hh : HeadIs x d.erase) :
+theorem head_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ : Fin n → Ty B R}
+    {V : Fin n → R} {τ : Ty B R} (d : GTm Γ V τ) {x : Fin n} (hh : HeadIs x d.erase) :
     V x ≠ 0 := by
   induction d with
   | var y => cases hh with | spine hs => exact spine_needed_gen hzs _ hs
@@ -46,7 +46,7 @@ theorem head_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ :
 semiring where `a + b = 0` implies `a = 0`, if a typed term gives `x` grade `0` then no
 β-reduct of it is a head normal form with head variable `x`. -/
 theorem head_needed_sound_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ}
-    {Γ : Fin n → Ty R} {V : Fin n → R} {τ : Ty R} (d : GTm Γ V τ) {x : Fin n} (hx : V x = 0)
+    {Γ : Fin n → Ty B R} {V : Fin n → R} {τ : Ty B R} (d : GTm Γ V τ) {x : Fin n} (hx : V x = 0)
     {t' : Tm n} (hred : Relation.ReflTransGen Step d.erase t') : ¬ HeadIs x t' := by
   intro hh
   obtain ⟨d', rfl⟩ := d.subject_reduction hred
