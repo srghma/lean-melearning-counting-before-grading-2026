@@ -105,9 +105,7 @@ theorem rel_iff_positive [Nontrivial R] [NoZeroDivisors R] (h11 : (1 : R) + 1 = 
 /-! ## The converse fails over `ℕ` -/
 
 /-- The untyped λ-term `λh a k. k (h (λx. x)) (h (λx. a x x))`. -/
-def Tm.relW2 : Tm 0 :=
-  .lam (.lam (.lam (.app (.app (.var 0) (.app (.var 2) (.lam (.var 0))))
-    (.app (.var 2) (.lam (.app (.app (.var 2) (.var 0)) (.var 0)))))))
+def Tm.relW2 : Tm 0 := [tm| λ h a k. k (h (λ x. x)) (h (λ x. a x x))]
 
 /-- The formula `((A → A) → B) → (A → A → A) → (B → B → C) → C`, for the atoms
 `A = atom a`, `B = atom b`, `C = atom c`. -/

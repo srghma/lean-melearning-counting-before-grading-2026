@@ -1,7 +1,7 @@
 module
 
 public import Mathlib
-public import RequestProject.Section3_NaturalReductionTypes.Syntax
+public import RequestProject.Section3_NaturalReductionTypes.TermNotation
 
 /-!
 # Natural reduction types (Section 3 of *Counting before Grading*)
@@ -276,19 +276,19 @@ end Has
 /-! ## Closed terms and worked examples -/
 
 /-- The untyped closed combinator `K = λa b. a`. -/
-def Tm.K : Tm 0 := .lam (.lam (.var 1))
+def Tm.K : Tm 0 := [tm| λ a b. a]
 
 /-- The body `K x x` of `λx. K x x`, in the scope of the bound variable `x`. -/
-def Tm.kxxBody : Tm 1 := .app (.app Tm.K.embed (.var 0)) (.var 0)
+def Tm.kxxBody : Tm 1 := [tm| x ⊢ ⟪Tm.K.embed⟫ x x]
 
 /-- `λx. K x x`: the bound variable occurs twice. -/
-def Tm.kxx : Tm 0 := .lam Tm.kxxBody
+def Tm.kxx : Tm 0 := [tm| λ x. ⟪Tm.kxxBody⟫]
 
 /-- `Twice = λf x. f (f x)`. -/
-def Tm.twice : Tm 0 := .lam (.lam (.app (.var 1) (.app (.var 1) (.var 0))))
+def Tm.twice : Tm 0 := [tm| λ f x. f (f x)]
 
 /-- `Compose = λg f x. g (f x)`. -/
-def Tm.compose : Tm 0 := .lam (.lam (.lam (.app (.var 2) (.app (.var 1) (.var 0)))))
+def Tm.compose : Tm 0 := [tm| λ g f x. g (f x)]
 
 /-- `K = λx y. x : σ →₁ τ →₀ σ`. -/
 theorem K_typing (σ τ : Ty B R) : Has (R := R) ![] 0 Tm.K (.arr 1 σ (.arr 0 τ σ)) :=

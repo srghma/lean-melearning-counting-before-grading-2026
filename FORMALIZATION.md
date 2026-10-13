@@ -15,7 +15,7 @@ The Lean files are grouped into directories named after the sections of the pape
 
 | Directory | Paper section | Files |
 | --- | --- | --- |
-| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `NaturalReductionTypes.lean`, `GTm.lean`, `RelevantLogic.lean`, `RelevantCompleteness.lean`, `HeadNeededGeneral.lean` |
+| `RequestProject/Section3_NaturalReductionTypes/` | 3. The quantitative core: natural reduction types (1993) | `Syntax.lean`, `TermNotation.lean`, `NaturalReductionTypes.lean`, `GTm.lean`, `RelevantLogic.lean`, `RelevantCompleteness.lean`, `HeadNeededGeneral.lean` |
 | `RequestProject/Section4_UnifiedFramework/` | 4. The unified framework (1995) | `ResourceLogic.lean` |
 | `RequestProject/Section5_Instances/` | 5. Three instances (1995) | `Instances.lean`, `QualitativeRelevance.lean` |
 | `RequestProject/Section6_Dictionary/` | 6. A dictionary (generic normalisation) | `Normalization.lean` |
@@ -51,6 +51,14 @@ function `V : Fin n → R`.
 `var : Fin n → Tm n`, `lam : Tm (n+1) → Tm n` and `app`, so `Tm 0` is the type of closed
 terms. Renaming, parallel substitution, the single substitution `t[u]` (`NRT.inst`) and
 β-reduction `NRT.Step` live there.
+
+**Named-variable notation.** `TermNotation.lean` defines a term elaborator (`elab`) so that
+λ-terms can be written as in the paper instead of with de Bruijn indices:
+`[tm| λ a b. a]` elaborates to `.lam (.lam (.var 1)) : Tm 0`, `[tm| x y ⊢ y x]` is an open
+term of `Tm 2` (the last name before `⊢` is index `0`), and `⟪e⟫` splices in a Lean term
+`e : Tm k`. A matching delaborator prints concrete terms back in this form, so goals and
+`#check` show e.g. `[tm| λ a b c. c (a (λ d. d)) (a (λ d. b d d))]`. The worked examples
+(`Tm.K`, `Tm.kxx`, `Tm.twice`, `Tm.compose`, `Tm.wcomb`, `Tm.relW2`) are written with it.
 
 **Metatheory, by induction on derivations.**
 

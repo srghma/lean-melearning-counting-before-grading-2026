@@ -197,7 +197,7 @@ theorem PHas.toRPf_nat {n : ℕ} {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {
 /-! ## Example: `W` and contraction -/
 
 /-- The untyped term `W = λf x. f x x`. -/
-def Tm.wcomb : Tm 0 := .lam (.lam (.app (.app (.var 1) (.var 0)) (.var 0)))
+def Tm.wcomb : Tm 0 := [tm| λ f x. f x x]
 
 /-- `W = λf x. f x x : (σ →ᵢ σ →ⱼ τ) →₁ σ →_{i+j} τ`, positively graded when `i, j ≥ 1`. -/
 theorem W_positive (σ τ : Ty B ℕ) {i j : ℕ} (hi : i ≠ 0) (hj : j ≠ 0) :
