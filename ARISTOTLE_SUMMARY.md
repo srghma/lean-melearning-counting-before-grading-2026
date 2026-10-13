@@ -1,3 +1,35 @@
+# Summary of changes for run ad3690c2-dcfb-462b-887d-24de2eb65510
+The type system is now defined by your inductive `Has` judgement again, and the typed-term grammar has moved into a file of its own. I read "GTy" in your request as `GTm`, the typed-term grammar: there is no `GTy` in the project. The whole project builds with no errors, no warnings and no `sorry`. I checked the axioms of the main theorems and they use only `propext`, `Classical.choice` and `Quot.sound`. Everything is committed.
+
+**One difference from your snippet:** I kept the base-type parameter from the previous change, so the definition reads `Ty B R` where your snippet has `Ty R`. Apart from that it is exactly your definition. If you also want to drop `B` and go back to the plain `Ty R`, I can do that.
+
+**`NaturalReductionTypes.lean`**
+- `Has` is the definition of the type system. All its theory is now proved directly by induction on derivations, with no reference to `GTm`:
+  - inversion lemmas for variables, abstractions and applications;
+  - renaming (covering weakening and embedding closed terms into any context);
+  - graded substitution and typing of the β-contractum (`Has.subst`, `Has.inst`);
+  - subject reduction, single-step and many-step;
+  - grade-0 soundness for head neededness over \(\mathbb N\) (`Has.head_needed_sound`).
+- The worked examples are now typings of the untyped terms: `K_typing`, `kxx_typing`, `twice_typing`, `compose_typing`.
+
+**New file `GTm.lean`**
+- Holds `GTm` and everything built on it: typed renaming and substitution, typed reduction `GStep`, the typed examples, and typed normal forms.
+- New result `has_iff_gtm`: `Has Γ V t τ ↔ ∃ d : GTm Γ V τ, d.erase = t`, so the two presentations agree.
+- No other file imports it.
+
+**Other files switched to `Has`.** Several statements changed form, because a positivity condition can't be attached to a proof of a `Prop` the way it was attached to a typed term:
+- **Positivity:** `GTm.Positive` and `GTm.PositiveR` are replaced by a new judgement `PHas`. It is `Has` with the extra condition that every arrow introduced or eliminated has a nonzero grade.
+- **Soundness, in `RelevantLogic.lean`:** `PHas.toRPf` turns a positive typing of `t` into a relevant-logic proof term with the same λ-term `t`, labelled by the support of `V`. It is proved once for general grades; `PHas.toRPf_nat` is the \(\mathbb N\) case.
+- **`K_not_positive`:** now says no closed term has a positive typing at type `base a →₁ base c →₀ base a`.
+- **Completeness, in `RelevantCompleteness.lean`:** `RPf.toPHas` goes the other way. `rel_iff_positive` and a new term-by-term version `rpf_iff_positive` give the equivalence.
+- **Converse over \(\mathbb N\):** `not_positive_relW2` now states `¬ PHas ![] 0 Tm.relW2 τ`.
+- **General grades (`HeadNeededGeneral.lean`):** the head-neededness result is now `Has.head_needed_sound_gen`.
+- **`Normalization.lean`:** strong normalization and normal forms are now stated for `Has`.
+- **`QualitativeRelevance.lean`:** its statements are now phrased with `Has` and `PHas`.
+- **Removed:** `Has.sn` and `RPf.toGTm` are gone. Typed-reduction versions of the normal-form results remain in `GTm.lean`.
+
+`FORMALIZATION.md` and the Properties table are updated to match. I added entries for `PHas` and `has_iff_gtm`, and every property entry's status matches the current build.
+
 # Summary of changes for run 79531985-77ad-416a-9a46-a949937f8343
 `Ty` now takes the type of base types as a parameter, so base types are no longer fixed to `ℕ`:
 
