@@ -1,3 +1,28 @@
+# Summary of changes for run 2cbedd1a-efd5-40c2-af30-5dcaebd923ea
+I added a custom elaborator, so λ-terms can now be written with named variables as in the paper instead of de Bruijn indices. The whole project builds with no errors or warnings, and there is no `sorry` anywhere. The work is committed.
+
+**New file `RequestProject/Section3_NaturalReductionTypes/TermNotation.lean`**
+- **Elaborator (written with `elab`):**
+  - `[tm| λ a b. a]` gives exactly `.lam (.lam (.var 1)) : Tm 0`.
+  - `[tm| x y ⊢ y x]` is an open term in `Tm 2`. The names before `⊢` are the free variables in scope, and the last one is index `0`.
+  - `⟪e⟫` inserts any Lean term `e : Tm k`, where `k` is the number of variables in scope at that point.
+  - Application groups to the left, and a `λ` body extends as far right as it can.
+  - An unbound name is reported as an error at that name.
+- **Pretty-printer:** concrete terms are now shown in the same named form in goals and `#check`. For example, `Tm.relW2` displays as `[tm| λ a b c. c (a (λ d. d)) (a (λ d. b d d))]`. Bound variables are named `a, b, c, …` by depth. Terms that aren't built entirely from the term constructors are printed as before.
+- **Examples:** a few `example … := rfl` checks show that the notation produces exactly the de Bruijn terms.
+
+**Worked examples rewritten with the notation**
+- `Tm.K = [tm| λ a b. a]`
+- `Tm.kxxBody = [tm| x ⊢ ⟪Tm.K.embed⟫ x x]` and `Tm.kxx = [tm| λ x. ⟪Tm.kxxBody⟫]`
+- `Tm.twice = [tm| λ f x. f (f x)]`
+- `Tm.compose = [tm| λ g f x. g (f x)]`
+- `Tm.wcomb = [tm| λ f x. f x x]`
+- `Tm.relW2 = [tm| λ h a k. k (h (λ x. x)) (h (λ x. a x x))]`
+
+The elaborated terms are the same as before, so every proof about them went through unchanged and no theorem statement changed. `FORMALIZATION.md` describes the notation, and the Properties entry for `Tm` now mentions it.
+
+The notation covers only the untyped terms `Tm`. The typing derivations and the typed terms in `GTm.lean` are written as before.
+
 # Summary of changes for run ad3690c2-dcfb-462b-887d-24de2eb65510
 The type system is now defined by your inductive `Has` judgement again, and the typed-term grammar has moved into a file of its own. I read "GTy" in your request as `GTm`, the typed-term grammar: there is no `GTy` in the project. The whole project builds with no errors, no warnings and no `sorry`. I checked the axioms of the main theorems and they use only `propext`, `Classical.choice` and `Quot.sound`. Everything is committed.
 
