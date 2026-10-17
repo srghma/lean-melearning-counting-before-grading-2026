@@ -289,8 +289,9 @@ theorem subject_reduction {V : Fin n → R} {τ : Ty B R} (d : GTm Γ V τ) {t' 
 
 /-! ### Soundness of grade `0` with respect to head neededness (grades in `ℕ`) -/
 
+/-- if x is head of spine-like term then x is used 1 or more times -/
 theorem spine_needed {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {τ : Ty B ℕ} (d : GTm Γ V τ)
-    {x : Fin n} (hs : Spine x d.erase) : 1 ≤ V x := by
+    {x : Fin n} (hs : IsHeadOfSpine x d.erase) : 1 ≤ V x := by
   induction d with
   | var y => cases hs; simp [single]
   | lam d ih => cases hs
@@ -300,7 +301,7 @@ theorem spine_needed {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {τ : Ty B �
 
 /-- The head variable of a typed head normal form always has grade `≥ 1`. -/
 theorem head_needed {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {τ : Ty B ℕ} (d : GTm Γ V τ)
-    {x : Fin n} (hh : HeadIs x d.erase) : 1 ≤ V x := by
+    {x : Fin n} (hh : IsHeadOfHnf x d.erase) : 1 ≤ V x := by
   induction d with
   | var y => cases hh with | spine hs => exact spine_needed _ hs
   | lam d ih =>
@@ -314,7 +315,7 @@ variable `x` grade `0`, then no β-reduct of `d` is a head normal form with head
 variable `x`: the variable is not head-needed. -/
 theorem head_needed_sound {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {τ : Ty B ℕ} (d : GTm Γ V τ)
     {x : Fin n} (hx : V x = 0) {t' : Tm n} (hred : Relation.ReflTransGen Step d.erase t') :
-    ¬ HeadIs x t' := by
+    ¬ IsHeadOfHnf x t' := by
   intro hh
   obtain ⟨d', rfl⟩ := d.subject_reduction hred
   have := d'.head_needed hh
@@ -413,7 +414,7 @@ neededness function), and no reduct has a variable of grade `0` at its head. -/
 theorem GTm.normal_form_head {n : ℕ} {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {τ : Ty B ℕ}
     (d : GTm Γ V τ) :
     ∃ d' : GTm Γ V τ, Relation.ReflTransGen GStep d d' ∧ Normal d'.erase ∧
-      ∀ x, V x = 0 → ¬ HeadIs x d'.erase := by
+      ∀ x, V x = 0 → ¬ IsHeadOfHnf x d'.erase := by
   obtain ⟨t', hr, hn⟩ := d.sn.exists_normal
   obtain ⟨d', hd', rfl⟩ := d.lift_steps hr
   exact ⟨d', hd', hn, fun x hx => d.head_needed_sound hx hr⟩

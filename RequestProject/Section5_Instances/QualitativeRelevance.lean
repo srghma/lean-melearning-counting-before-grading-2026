@@ -66,14 +66,14 @@ theorem relW2_not_nat {τ : NRT.Ty B ℕ} : ¬ NRT.PHas ![] (0 : Fin 0 → ℕ) 
 reduct. -/
 theorem trust_untrusted_not_head {n : ℕ} {Γ : Fin n → NRT.Ty B Trust} {V : Fin n → Trust}
     {t t' : NRT.Tm n} {τ : NRT.Ty B Trust} (h : NRT.Has Γ V t τ) {x : Fin n} (hx : V x = .U)
-    (hred : Relation.ReflTransGen NRT.Step t t') : ¬ NRT.HeadIs x t' :=
+    (hred : Relation.ReflTransGen NRT.Step t t') : ¬ NRT.IsHeadOfHnf x t' :=
   h.head_needed_sound_gen (by decide) hx hred
 
 /-- In the binding-time instance, a dynamic variable never reaches head position in any
 reduct. -/
 theorem bt_dynamic_not_head {n : ℕ} {Γ : Fin n → NRT.Ty B BT} {V : Fin n → BT}
     {t t' : NRT.Tm n} {τ : NRT.Ty B BT} (h : NRT.Has Γ V t τ) {x : Fin n} (hx : V x = .D)
-    (hred : Relation.ReflTransGen NRT.Step t t') : ¬ NRT.HeadIs x t' :=
+    (hred : Relation.ReflTransGen NRT.Step t t') : ¬ NRT.IsHeadOfHnf x t' :=
   h.head_needed_sound_gen (by decide) hx hred
 
 end RML

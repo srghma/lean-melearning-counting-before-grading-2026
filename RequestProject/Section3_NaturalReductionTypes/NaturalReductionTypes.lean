@@ -56,16 +56,16 @@ def occ : {n : ℕ} → Fin n → Tm n → ℕ
   | _, x, .lam t => occ x.succ t
   | _, x, .app t u => occ x t + occ x u
 
-/-- `Spine x t`: `t` is `x N₁ … Nₖ`. -/
-inductive Spine : {n : ℕ} → Fin n → Tm n → Prop
-  | var {n : ℕ} (x : Fin n) : Spine x (.var x)
-  | app {n : ℕ} {x : Fin n} {t : Tm n} (u : Tm n) : Spine x t → Spine x (.app t u)
+/-- `IsHeadOfSpine x t`: `t` is `x N₁ … Nₖ`. -/
+inductive IsHeadOfSpine : {n : ℕ} → Fin n → Tm n → Prop
+  | var {n : ℕ} (x : Fin n) : IsHeadOfSpine x (.var x)
+  | app {n : ℕ} {x : Fin n} {t : Tm n} (u : Tm n) : IsHeadOfSpine x t → IsHeadOfSpine x (.app t u)
 
-/-- `HeadIs x t`: `t` is a head normal form `λy₁…yₘ. x N₁ … Nₖ` whose head variable is
+/-- `IsHeadOfHnf x t`: `t` is a head normal form `λy₁…yₘ. x N₁ … Nₖ` whose head variable is
 the free variable `x`. -/
-inductive HeadIs : {n : ℕ} → Fin n → Tm n → Prop
-  | spine {n : ℕ} {x : Fin n} {t : Tm n} : Spine x t → HeadIs x t
-  | lam {n : ℕ} {x : Fin n} {t : Tm (n + 1)} : HeadIs x.succ t → HeadIs x (.lam t)
+inductive IsHeadOfHnf : {n : ℕ} → Fin n → Tm n → Prop
+  | spine {n : ℕ} {x : Fin n} {t : Tm n} : IsHeadOfSpine x t → IsHeadOfHnf x t
+  | lam {n : ℕ} {x : Fin n} {t : Tm (n + 1)} : IsHeadOfHnf x.succ t → IsHeadOfHnf x (.lam t)
 
 /-- Embed a closed untyped term into any scope. -/
 def Tm.embed {n : ℕ} (t : Tm 0) : Tm n := NRT.rename Fin.elim0 t
@@ -244,8 +244,9 @@ theorem subject_reduction_star {V : Fin n → R} {t t' : Tm n} {τ : Ty B R}
 
 /-! ### Soundness of grade `0` with respect to head neededness (grades in `ℕ`) -/
 
+/-- if x is head of spine - then x is used 1 or more times -/
 theorem spine_needed {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {t : Tm n} {τ : Ty B ℕ}
-    (h : Has Γ V t τ) {x : Fin n} (hs : Spine x t) : 1 ≤ V x := by
+    (h : Has Γ V t τ) {x : Fin n} (hs : IsHeadOfSpine x t) : 1 ≤ V x := by
   induction hs generalizing V τ with
   | var => obtain ⟨rfl, -⟩ := h.inv_var; simp [single]
   | app u _ ih =>
@@ -254,19 +255,22 @@ theorem spine_needed {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {t : Tm n} {�
 
 /-- The head variable of a typed head normal form always has grade `≥ 1`. -/
 theorem head_needed {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {t : Tm n} {τ : Ty B ℕ}
-    (h : Has Γ V t τ) {x : Fin n} (hh : HeadIs x t) : 1 ≤ V x := by
+    (h : Has Γ V t τ) {x : Fin n} (hh : IsHeadOfHnf x t) : 1 ≤ V x := by
   induction hh generalizing τ with
   | spine hs => exact h.spine_needed hs
   | lam _ ih =>
     obtain ⟨σ, τ', W, hb, rfl, rfl⟩ := h.inv_lam
     exact ih hb
 
-/-- **Soundness of grade `0` w.r.t. head neededness.** If `Γ ⊢_V t : τ` gives the free
-variable `x` grade `0`, then no β-reduct of `t` is a head normal form with head
-variable `x`: the variable is not head-needed. -/
+/-- **Soundness of grade `0` w.r.t. head neededness.**
+
+If the type checker says `x` has grade `0` (`V x = 0`),
+then no matter how many `β`-reduction steps `t` takes (`t →* t'`),
+`x` will NEVER reach the head position in `t'` (`x` is not head-needed).
+-/
 theorem head_needed_sound {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {t t' : Tm n} {τ : Ty B ℕ}
     {x : Fin n} (h : Has Γ V t τ) (hx : V x = 0) (hred : Relation.ReflTransGen Step t t') :
-    ¬ HeadIs x t' := by
+    ¬ IsHeadOfHnf x t' := by
   intro hh
   have := (h.subject_reduction_star hred).head_needed hh
   omega
@@ -317,7 +321,11 @@ theorem twice_typing (σ : Ty B R) (i : R) :
 variable `x` receives the product `i * j` of the use counts. -/
 theorem compose_typing (σ₁ σ₂ σ₃ : Ty B R) (i j : R) :
     Has (R := R) ![] 0 Tm.compose
-      (.arr 1 (.arr i σ₂ σ₃) (.arr i (.arr j σ₁ σ₂) (.arr (i * j) σ₁ σ₃))) :=
+      (.arr 1
+        (.arr i σ₂ σ₃)
+        (.arr i
+          (.arr j σ₁ σ₂)
+          (.arr (i * j) σ₁ σ₃))) :=
   (Has.lam (Has.lam (Has.lam (Has.app
       (Has.var (Γ := Fin.cons σ₁ (Fin.cons (.arr j σ₁ σ₂) (Fin.cons (.arr i σ₂ σ₃) ![]))) 2)
       (Has.app (Has.var 1) (Has.var 0)))))).congr

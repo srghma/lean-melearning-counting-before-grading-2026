@@ -147,6 +147,6 @@ example : [tm| λ h a k. k (h (λ x. x)) (h (λ x. a x x))] =
     .lam (.lam (.lam (.app (.app (.var 0) (.app (.var 2) (.lam (.var 0))))
       (.app (.var 2) (.lam (.app (.app (.var 2) (.var 0)) (.var 0))))))) := rfl
 example (t : Tm 1) : [tm| x ⊢ λ y. ⟪rename Fin.succ t⟫ y] =
-    .lam (.app (rename Fin.succ t) (.var 0)) := rfl
+    (.lam (.app (rename Fin.succ t) (.var 0)) : Tm 1) := rfl
 
 end NRT

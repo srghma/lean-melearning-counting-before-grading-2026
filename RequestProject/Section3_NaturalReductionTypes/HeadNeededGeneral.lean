@@ -20,8 +20,29 @@ namespace Has
 
 variable {B : Type} {R : Type} [Semiring R] [Nontrivial R]
 
-theorem spine_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ : Fin n → Ty B R}
-    {V : Fin n → R} {t : Tm n} {τ : Ty B R} (h : Has Γ V t τ) {x : Fin n} (hs : Spine x t) :
+/-- if x is head of spine - then x is used 1 or more times
+
+1. **`spine_needed`** captures **Section 3 (1993)**: pure ℕ-counting analysis.
+2. **`spine_needed_gen`** captures **Section 5 (1995)**: the unified framework where the algebra is a parameter.
+   It proves that the core soundness property (*"a grade-0 variable never appears at the head of a computation"*)
+   is universally true across both quantitative systems (ℕ) and qualitative systems (`Trust`, `BT`).
+-/
+theorem spine_needed_gen
+  /- "hypothesis zero sum". Ensures that in `V₁ + b * V₂` cannot be `V₁ = N, b = any, V₂ = -N`
+
+  # What is "zero-sum-freedom"?
+  In abstract algebra, a semiring or monoid (R, +, 0) is called **zero-sum-free** (also called *conical* or *positive*) if:
+    ∀a,b∈R,a+b=0⟹a=0 and b=0
+  In plain English: **You cannot add two non-zero things together and get zero.**
+  -/
+  (hzs : ∀ a b : R, a + b = 0 → a = 0)
+  {n : ℕ} {Γ : Fin n → Ty B R}
+  {V : Fin n → R}
+  {t : Tm n}
+  {τ : Ty B R}
+  (h : Has Γ V t τ)
+  {x : Fin n}
+  (hs : IsHeadOfSpine x t) :
     V x ≠ 0 := by
   induction hs generalizing V τ with
   | var => obtain ⟨rfl, -⟩ := h.inv_var; simp [single]
@@ -31,7 +52,7 @@ theorem spine_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ 
 
 /-- The head variable of a typed head normal form has a nonzero grade. -/
 theorem head_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ : Fin n → Ty B R}
-    {V : Fin n → R} {t : Tm n} {τ : Ty B R} (h : Has Γ V t τ) {x : Fin n} (hh : HeadIs x t) :
+    {V : Fin n → R} {t : Tm n} {τ : Ty B R} (h : Has Γ V t τ) {x : Fin n} (hh : IsHeadOfHnf x t) :
     V x ≠ 0 := by
   induction hh generalizing τ with
   | spine hs => exact h.spine_needed_gen hzs hs
@@ -39,12 +60,12 @@ theorem head_needed_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ} {Γ :
     obtain ⟨σ, τ', W, hb, rfl, rfl⟩ := h.inv_lam
     exact ih hb
 
-/-- **Soundness of grade `0` w.r.t. head neededness, for general grades.**  In a nontrivial
-semiring where `a + b = 0` implies `a = 0`, if `Γ ⊢_V t : τ` gives `x` grade `0` then no
-β-reduct of `t` is a head normal form with head variable `x`. -/
+/-- **Soundness of grade `0` w.r.t. head neededness, for general grades.**
+In a nontrivial semiring where `a + b = 0` implies `a = 0`, if `Γ ⊢_V t : τ` gives `x` grade `0`
+then no β-reduct of `t` is a head normal form with head variable `x`. -/
 theorem head_needed_sound_gen (hzs : ∀ a b : R, a + b = 0 → a = 0) {n : ℕ}
     {Γ : Fin n → Ty B R} {V : Fin n → R} {t t' : Tm n} {τ : Ty B R} (h : Has Γ V t τ)
-    {x : Fin n} (hx : V x = 0) (hred : Relation.ReflTransGen Step t t') : ¬ HeadIs x t' :=
+    {x : Fin n} (hx : V x = 0) (hred : Relation.ReflTransGen Step t t') : ¬ IsHeadOfHnf x t' :=
   fun hh => (h.subject_reduction_star hred).head_needed_gen hzs hh hx
 
 end Has

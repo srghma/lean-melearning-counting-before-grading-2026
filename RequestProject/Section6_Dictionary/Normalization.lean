@@ -218,7 +218,7 @@ reduct — in particular not the normal form — has a variable of grade `0` at 
 theorem normal_form_head {n : ℕ} {Γ : Fin n → Ty B ℕ} {V : Fin n → ℕ} {t : Tm n} {τ : Ty B ℕ}
     (h : Has Γ V t τ) :
     ∃ t', Relation.ReflTransGen Step t t' ∧ Normal t' ∧ Has Γ V t' τ ∧
-      ∀ x, V x = 0 → ¬ HeadIs x t' := by
+      ∀ x, V x = 0 → ¬ IsHeadOfHnf x t' := by
   obtain ⟨t', hr, hn⟩ := (strong_normalization h).exists_normal
   exact ⟨t', hr, hn, h.subject_reduction_star hr, fun x hx => h.head_needed_sound hx hr⟩
 
