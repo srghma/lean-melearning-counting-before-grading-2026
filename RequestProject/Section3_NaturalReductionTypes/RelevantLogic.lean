@@ -37,7 +37,13 @@ variable {B : Type}
 
 /-! ## Relevant implication: the grammar of proof terms -/
 
-/-- Implicational formulas. -/
+/-- Implicational formulas.
+
+TODO: implement as `Fm B := Ty B Unit`
+
+NOTE: `Fm.toTy R` `(A→B).toTy = A.toTy →₁ B.toTy` is similar to
+`Ty.erase` `(σ → b τ).erase = σ.erase → τ.erase`.
+-/
 inductive Fm (B : Type) : Type
   | atom : B → Fm B
   | imp : Fm B → Fm B → Fm B
@@ -47,11 +53,87 @@ inductive Fm (B : Type) : Type
 of (labelled, Anderson–Belnap style) natural-deduction proofs of `A` from the `n`
 hypotheses `Γ : Fin n → Fm B` that use *exactly* the hypotheses in `U`.  Implication
 introduction may only discharge a hypothesis that was used; implication elimination takes
-the union of the labels. -/
+the union of the labels.
+
+
+`RPf Γ U A` is the type of natural-deduction proof terms for the implicational
+fragment of relevant logic (R→) in Anderson–Belnap style.
+
+Indices of the inductive type:
+* `{n : ℕ}`: The number of hypotheses currently in scope.
+* `(Γ : Fin n → Fm B)`: The context mapping each de Bruijn index `0, ..., n-1`
+  to its hypothesis formula.
+* `(U : Fin n → Prop)`: The *usage label* (or support predicate).
+  `U i` holds iff hypothesis `i` was *strictly used* in this proof.
+* `(A : Fm B)`: The formula proved by this derivation.
+
+
+NOTE: could be `inductive RPfBool {B : Type} : {n : ℕ} → (Fin n → Ty B Bool) → (Fin n → Bool) → Ty B Bool → Type`
+
+NOTE: RPf is Type (but Has is Prop), bc Has takes Tm, but RPf has Tm inside
+-/
 inductive RPf : {n : ℕ} → (Fin n → Fm B) → (Fin n → Prop) → Fm B → Type
-  | hyp {n : ℕ} {Γ : Fin n → Fm B} (x : Fin n) : RPf Γ (· = x) (Γ x)
+
+  /--
+  **Hypothesis rule (Var)**:
+  References an assumption already present in context `Γ`.
+
+  Variables:
+  * `n`: Number of hypotheses in scope.
+  * `Γ`: The context of available hypotheses.
+  * `x`: The de Bruijn index (`0 ≤ x < n`) of the hypothesis being used.
+
+  Result:
+  * Usage `(· = x)`: A singleton predicate `fun y => y = x`.
+    Only hypothesis `x` is marked as used; all others are unused.
+  * Formula `Γ x`: Concludes the exact formula stored at index `x`.
+  -/
+  | hyp {n : ℕ} {Γ : Fin n → Fm B} (x : Fin n) :
+      RPf Γ (· = x) (Γ x)
+
+  /--
+  **Implication Introduction (→I / Lam)**:
+  Discharges assumption `A` to prove `A → C`.
+
+  Variables:
+  * `n`: Outer scope size (after discharging `A`).
+  * `Γ`: Outer context of remaining hypotheses.
+  * `U`: Usage predicate of the premise (scope `n + 1`), tracking whether
+    each variable — including the newly bound one at index `0` — was used.
+  * `A`: The antecedent formula being assumed and then discharged.
+  * `C`: The consequent formula derived in the body.
+  * First arg (`RPf (Fin.cons A Γ) U C`): Proof of `C` using hypotheses `A :: Γ`.
+  * Second arg (`U 0`): **The Relevance Check!** A proof that the assumption
+    at index `0` (`A`) was *actually used*. In relevant logic, you cannot
+    discharge an unused hypothesis (weakening is forbidden).
+
+  Result:
+  * Usage `(fun x => U x.succ)`: Discharges index `0` by dropping it and
+    shifting all remaining outer variable indices (`x.succ`).
+  * Formula `.imp A C`: Concludes `A → C`.
+  -/
   | impI {n : ℕ} {Γ : Fin n → Fm B} {U : Fin (n + 1) → Prop} {A C : Fm B} :
       RPf (Fin.cons A Γ) U C → U 0 → RPf Γ (fun x => U x.succ) (.imp A C)
+
+  /--
+  **Implication Elimination (→E / App / Modus Ponens)**:
+  Applies a proof of `A → C` to a proof of `A` to derive `C`.
+
+  Variables:
+  * `n`: Scope size (both subproofs share the same context `Γ`).
+  * `Γ`: Context of available hypotheses.
+  * `U`: Set of hypotheses used to derive the function `A → C`.
+  * `U'`: Set of hypotheses used to derive the argument `A`.
+  * `A`: Domain / argument formula.
+  * `C`: Codomain / result formula.
+  * First arg (`RPf Γ U (.imp A C)`): Proof of the function `A → C`.
+  * Second arg (`RPf Γ U' A`): Proof of the argument `A`.
+
+  Result:
+  * Usage `(fun x => U x ∨ U' x)`: The **union** of used hypotheses. A hypothesis
+    counts as used if it was needed by the function *or* the argument.
+  * Formula `C`: Concludes the target formula `C`.
+  -/
   | impE {n : ℕ} {Γ : Fin n → Fm B} {U U' : Fin n → Prop} {A C : Fm B} :
       RPf Γ U (.imp A C) → RPf Γ U' A → RPf Γ (fun x => U x ∨ U' x) C
 
@@ -313,7 +395,10 @@ theorem prod_union_idem (s t : Finset Sug) : (s ∪ t).prod id = s.prod id * t.p
     · rw [Finset.prod_insert hat, ih, mul_assoc]
 
 /-- **Soundness of `R→` for the Sugihara monoid**: the fusion of the values of the used
-hypotheses is below the value of the conclusion. -/
+hypotheses is below the value of the conclusion.
+
+Every theorem provable in `R→` must evaluate to a "true" value (>= 0) in `Sug`.
+-/
 theorem rel_sound_sugihara {n : ℕ} {Γ : Fin n → Fm B} {U : Fin n → Prop} {A : Fm B}
     (h : Rel Γ U A)
     (v : B → Sug) : Sug.le ((usedVals v Γ U).prod id) (A.sval v) := by
